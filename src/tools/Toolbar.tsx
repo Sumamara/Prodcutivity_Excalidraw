@@ -67,14 +67,24 @@ export function Toolbar({
     [api],
   );
 
-  // Reaplicar la herramienta activa cuando cambia el lienzo (sección nueva).
+  const applyPenMode = useCallback(
+    (on: boolean) => {
+      if (!api) return;
+      // Modo lápiz: Excalidraw ignora dedo/palma y solo dibuja el Pencil.
+      api.updateScene({ appState: { penMode: on } });
+    },
+    [api],
+  );
+
+  // Reaplicar herramienta y modo lápiz cuando cambia el lienzo (sección nueva).
   useEffect(() => {
     if (!api) return;
     const c = cfgRef.current;
     const p = c.pencils.find((x) => x.id === c.activeId);
     if (p) applyPencil(p);
     else applyKind(c.activeId as Kind);
-  }, [api, applyPencil, applyKind]);
+    applyPenMode(c.penMode);
+  }, [api, applyPencil, applyKind, applyPenMode]);
 
   const selectPencil = (p: Pencil) => {
     if (cfg.activeId === p.id) {
@@ -94,6 +104,13 @@ export function Toolbar({
     saveTools(next);
     applyKind(k);
     setPanelOpen(false);
+  };
+
+  const togglePenMode = () => {
+    const next = { ...cfg, penMode: !cfg.penMode };
+    setCfg(next);
+    saveTools(next);
+    applyPenMode(next.penMode);
   };
 
   const patchActivePencil = (patch: Partial<Pencil>) => {
@@ -164,6 +181,22 @@ export function Toolbar({
       ))}
 
       <span className="tb-sep" />
+
+      <button
+        type="button"
+        className="tb-btn"
+        data-active={cfg.penMode}
+        aria-pressed={cfg.penMode}
+        title={
+          cfg.penMode
+            ? "Modo lápiz: ON — ignora dedo y palma"
+            : "Modo lápiz: OFF — dedo y Pencil dibujan"
+        }
+        aria-label="Modo lápiz"
+        onClick={togglePenMode}
+      >
+        <PenModeIcon />
+      </button>
 
       <button
         type="button"
@@ -336,6 +369,25 @@ function SlidersIcon() {
       <circle cx="15" cy="7" r="2" fill="currentColor" stroke="none" />
       <circle cx="9" cy="12" r="2" fill="currentColor" stroke="none" />
       <circle cx="18" cy="17" r="2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function PenModeIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 4l5 5L9 20l-5 1 1-5z" />
+      <path d="M13 6l5 5" />
     </svg>
   );
 }

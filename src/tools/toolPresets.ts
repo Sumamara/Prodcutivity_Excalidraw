@@ -16,6 +16,8 @@ export interface ToolConfig {
   pencils: Pencil[];
   /** Id del elemento seleccionado en la barra: un id de lápiz o un tipo base. */
   activeId: string;
+  /** Modo lápiz: ignora dedo/palma, solo dibuja el Pencil. */
+  penMode: boolean;
 }
 
 const KEY = "journal-horas:tools:v1";
@@ -36,13 +38,18 @@ export function loadTools(): ToolConfig {
         return {
           pencils: parsed.pencils as Pencil[],
           activeId: parsed.activeId ?? "p1",
+          penMode: parsed.penMode ?? false,
         };
       }
     }
   } catch {
     /* noop */
   }
-  return { pencils: DEFAULT_PENCILS.map((p) => ({ ...p })), activeId: "p1" };
+  return {
+    pencils: DEFAULT_PENCILS.map((p) => ({ ...p })),
+    activeId: "p1",
+    penMode: false,
+  };
 }
 
 export function saveTools(cfg: ToolConfig): void {
