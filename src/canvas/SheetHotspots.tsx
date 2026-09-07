@@ -2,6 +2,7 @@ import { useEffect, useState, type MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 
 import type { Hotspot, ScaleLegend } from "./hotspot";
+import { MoodMeterModal } from "./MoodMeter";
 import "./SheetHotspots.css";
 
 interface OpenState {
@@ -27,6 +28,7 @@ export function SheetHotspots({
   closeRef: MutableRefObject<(() => void) | null>;
 }) {
   const [open, setOpen] = useState<OpenState | null>(null);
+  const [meterOpen, setMeterOpen] = useState(false);
 
   useEffect(() => {
     closeRef.current = () => setOpen(null);
@@ -89,9 +91,15 @@ export function SheetHotspots({
             body={current.body}
             scale={current.scale}
             onClose={() => setOpen(null)}
+            onOpenMeter={() => {
+              setOpen(null);
+              setMeterOpen(true);
+            }}
           />,
           document.body,
         )}
+
+      {meterOpen && <MoodMeterModal onClose={() => setMeterOpen(false)} />}
     </>
   );
 }
@@ -102,12 +110,14 @@ function Popover({
   body,
   scale,
   onClose,
+  onOpenMeter,
 }: {
   rect: DOMRect;
   title: string;
   body: string;
   scale?: ScaleLegend;
   onClose: () => void;
+  onOpenMeter: () => void;
 }) {
   const POP_W = scale ? 262 : 250;
   const EST_H = scale ? 400 : 150;
@@ -162,6 +172,17 @@ function Popover({
               ))}
             </ul>
           </div>
+          {scale.moodMeter && (
+            <div className="hs-scale-foot">
+              <button
+                type="button"
+                className="hs-scale-more"
+                onClick={onOpenMeter}
+              >
+                Ver matriz completa · 100 emociones
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <>

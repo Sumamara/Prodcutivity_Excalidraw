@@ -133,6 +133,31 @@
   color: #3d4653;
 }
 
+.hs-scale-foot {
+  flex: 0 0 auto;
+  padding: 0 14px 14px;
+}
+
+.hs-scale-more {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d5d9df;
+  border-radius: 7px;
+  background: #f0eef8;
+  color: #1e2a3a;
+  font: 600 11px/1.2 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.hs-scale-more:hover {
+  background: #e6e2f5;
+}
+
+.hs-scale-more:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hs-dot {
     transition: none;

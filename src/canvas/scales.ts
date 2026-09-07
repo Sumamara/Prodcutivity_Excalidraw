@@ -15,10 +15,15 @@ const GRADIENT = [
 ];
 
 /** `labels[0]` = nivel 10 … `labels[9]` = nivel 1. */
-function make(accent: string, labels: string[]): ScaleLegend {
+function make(
+  accent: string,
+  labels: string[],
+  opts: { moodMeter?: boolean } = {},
+): ScaleLegend {
   return {
     accent,
     rows: labels.map((label, i) => ({ n: 10 - i, label, color: GRADIENT[i] })),
+    moodMeter: opts.moodMeter,
   };
 }
 
@@ -48,15 +53,19 @@ export const AGRADABILIDAD_SCALE = make("#5e3aa0", [
   "Fatal",
 ]);
 
-export const ACTIVACION_SCALE = make("#e8722b", [
-  "Máxima",
-  "Muy alta",
-  "Alta",
-  "Elevada",
-  "Ligeramente alta",
-  "Ligeramente baja",
-  "Atenuada",
-  "Baja",
-  "Muy baja",
-  "Mínima",
-]);
+export const ACTIVACION_SCALE = make(
+  "#e8722b",
+  [
+    "Máxima",
+    "Muy alta",
+    "Alta",
+    "Elevada",
+    "Ligeramente alta",
+    "Ligeramente baja",
+    "Atenuada",
+    "Baja",
+    "Muy baja",
+    "Mínima",
+  ],
+  { moodMeter: true },
+);

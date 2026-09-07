@@ -14,6 +14,8 @@ export interface ScaleLegend {
   accent: string;
   /** Filas de 10 a 1. */
   rows: ScaleRow[];
+  /** Si está, el popover añade un botón que abre la matriz energía × agrado. */
+  moodMeter?: boolean;
 }
 
 export interface Hotspot {
