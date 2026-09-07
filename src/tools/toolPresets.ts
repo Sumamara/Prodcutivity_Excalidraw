@@ -20,13 +20,13 @@ export interface ToolConfig {
   penMode: boolean;
 }
 
-const KEY = "journal-horas:tools:v1";
+const KEY = "journal-horas:tools:v2";
 
 export const DEFAULT_PENCILS: Pencil[] = [
-  { id: "p1", label: "Fino", color: "#1e2a3a", width: 1, opacity: 100 },
-  { id: "p2", label: "Medio", color: "#1e2a3a", width: 2.5, opacity: 100 },
-  { id: "p3", label: "Rotulador", color: "#2b6cb0", width: 4, opacity: 95 },
-  { id: "p4", label: "Resaltador", color: "#f2b705", width: 16, opacity: 30 },
+  { id: "p1", label: "Negro", color: "#1e2a3a", width: 0.3, opacity: 100 },
+  { id: "p2", label: "Rojo", color: "#c0392b", width: 0.4, opacity: 100 },
+  { id: "p3", label: "Azul", color: "#2b6cb0", width: 0.4, opacity: 100 },
+  { id: "p4", label: "Resaltador", color: "#f2b705", width: 6, opacity: 35 },
 ];
 
 export function loadTools(): ToolConfig {

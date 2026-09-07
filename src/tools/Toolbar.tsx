@@ -287,19 +287,19 @@ function ConfigPanel({
         <div className="tb-row">
           <input
             type="range"
-            min={0.2}
+            min={0.1}
             max={24}
-            step={0.2}
+            step={0.1}
             value={pencil.width}
             onChange={(e) => onChange({ width: Number(e.target.value) })}
           />
           <input
             type="number"
-            min={0.2}
+            min={0.1}
             max={60}
-            step={0.2}
+            step={0.1}
             value={pencil.width}
-            onChange={(e) => onChange({ width: clamp(e.target.value, 0.2, 60) })}
+            onChange={(e) => onChange({ width: clamp(e.target.value, 0.1, 60) })}
           />
         </div>
       </label>
