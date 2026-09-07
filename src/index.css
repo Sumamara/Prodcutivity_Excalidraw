@@ -1,0 +1,176 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: "Jost", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #eceef1;
+  /* iPad: sin rebote de scroll ni resaltado de toque. */
+  position: fixed;
+  inset: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.app-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #eceef1;
+  /* Respeta la zona segura del iPad (notch, esquinas, barra de inicio). */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* La interfaz propia (pestañas, barra, popovers) no se selecciona ni saca el
+   menú de iOS al mantener pulsado. El texto de Excalidraw y los campos del
+   panel de ajustes sí se pueden editar/seleccionar. */
+.app-tabs,
+.toolbar,
+.hs-pop,
+.hs-dot {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ---- pestañas de sección ---- */
+.app-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 0;
+}
+
+.app-tab {
+  border: 1px solid #d5d9df;
+  border-bottom: none;
+  background: #e0e3e8;
+  color: #5b6472;
+  font: 500 13px/1 "Jost", system-ui, sans-serif;
+  padding: 9px 16px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+}
+
+.app-tab:hover {
+  color: #1e2a3a;
+}
+
+.app-tab[aria-selected="true"] {
+  background: #ffffff;
+  color: #1e2a3a;
+}
+
+.app-tab:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: -2px;
+}
+
+/* ---- espacio de trabajo (marco de la hoja) ---- */
+.workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 14px 14px;
+}
+
+.page-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid #d5d9df;
+  border-radius: 0 8px 8px 8px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(30, 42, 58, 0.08);
+}
+
+/* Fondo: la plantilla de la sección. No captura el puntero: se escribe encima. */
+.sheet-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #ffffff;
+  pointer-events: none;
+}
+
+/* Se ancla al viewport de Excalidraw vía transform (translate + scale). */
+.sheet-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1000px;
+  height: 750px;
+  transform-origin: 0 0;
+}
+
+.sheet-svg {
+  display: block;
+  width: 1000px;
+  height: 750px;
+  font-family: "Jost", system-ui, sans-serif;
+}
+
+/* Capa de zonas interactivas de la hoja (cabeceras), por encima del lienzo. */
+.hotspot-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hotspot-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1000px;
+  height: 750px;
+  transform-origin: 0 0;
+}
+
+/* Lienzo de Excalidraw por encima, con fondo transparente. */
+.excalidraw-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.excalidraw-wrapper .excalidraw,
+.excalidraw-wrapper .excalidraw .excalidraw__canvas {
+  background: transparent !important;
+}
+
+/* Usamos barra propia (src/tools/Toolbar): ocultamos la UI nativa de
+   Excalidraw — barra de herramientas, menú de las 3 rayas, panel de estilos,
+   botón de ayuda y de biblioteca. Los atajos de teclado siguen funcionando. */
+.excalidraw-wrapper .excalidraw .App-toolbar-container,
+.excalidraw-wrapper .excalidraw .App-menu_top__left,
+.excalidraw-wrapper .excalidraw .dropdown-menu-button,
+.excalidraw-wrapper .excalidraw .mobile-misc-tools-container,
+.excalidraw-wrapper .excalidraw .help-icon,
+.excalidraw-wrapper .excalidraw .default-sidebar-trigger {
+  display: none !important;
+}

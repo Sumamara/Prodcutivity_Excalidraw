@@ -1,0 +1,61 @@
+name: iOS IPA (sin firmar)
+
+# Compila la app de iPad en un runner macOS y sube un .ipa SIN FIRMAR como
+# artefacto. Ese .ipa se instala en el iPad desde Windows con SideStore o
+# AltStore (firman con tu Apple ID gratis al instalar).
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**/*.md"
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build web + sync a iOS
+        run: |
+          npm run build
+          npx cap sync ios
+
+      - name: Archive sin firma
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
+
+      - name: Empaquetar .ipa sin firmar
+        run: |
+          cd "$RUNNER_TEMP/App.xcarchive/Products/Applications"
+          mkdir -p Payload
+          mv App.app Payload/App.app
+          zip -qr "$RUNNER_TEMP/App-unsigned.ipa" Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: App-unsigned-ipa
+          path: ${{ runner.temp }}/App-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

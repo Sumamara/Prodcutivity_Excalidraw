@@ -1,0 +1,74 @@
+.hs-dot {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 3px;
+  cursor: help;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.1s ease;
+}
+
+.hs-dot:hover,
+.hs-dot[aria-expanded="true"] {
+  background: rgba(242, 183, 5, 0.2);
+}
+
+.hs-dot:focus-visible {
+  outline: 2px solid #f2b705;
+  outline-offset: 1px;
+}
+
+.hs-pop {
+  position: fixed;
+  z-index: 50;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(30, 42, 58, 0.22);
+  padding: 12px 13px 13px;
+  pointer-events: auto;
+}
+
+.hs-pop-title {
+  font: 600 12.5px/1.35 "Jost", system-ui, sans-serif;
+  color: #1e2a3a;
+  margin-bottom: 5px;
+  padding-right: 16px;
+}
+
+.hs-pop-body {
+  margin: 0;
+  font: 400 12px/1.5 "Jost", system-ui, sans-serif;
+  color: #3d4653;
+}
+
+.hs-pop-x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  color: #8a8a8a;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.hs-pop-x:hover {
+  color: #1e2a3a;
+}
+
+.hs-pop-x:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hs-dot {
+    transition: none;
+  }
+}

@@ -1,0 +1,169 @@
+.toolbar {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px;
+  background: #ffffff;
+  border: 1px solid #d5d9df;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(30, 42, 58, 0.14);
+}
+
+.tb-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #1e2a3a;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tb-btn:hover {
+  background: #f0eef8;
+}
+
+.tb-btn:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.tb-btn[data-active="true"] {
+  background: #1e2a3a;
+  color: #ffffff;
+  border-color: #1e2a3a;
+}
+
+.tb-glyph {
+  font: 700 16px/1 "Jost", system-ui, sans-serif;
+}
+
+.tb-pencil .tb-swatch {
+  display: block;
+  width: 20px;
+  border-radius: 2px;
+}
+
+.tb-btn[data-active="true"] .tb-swatch {
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.tb-sep {
+  width: 22px;
+  height: 1px;
+  background: #e2e5ea;
+  margin: 2px 0;
+}
+
+/* ---- panel de ajustes ---- */
+.tb-panel {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 0;
+  width: 234px;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(30, 42, 58, 0.2);
+  padding: 12px 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tb-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tb-panel-head strong {
+  font: 600 13px/1 "Jost", system-ui, sans-serif;
+  color: #1e2a3a;
+}
+
+.tb-x {
+  border: 0;
+  background: none;
+  font-size: 17px;
+  line-height: 1;
+  color: #8a8a8a;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.tb-x:hover {
+  color: #1e2a3a;
+}
+
+.tb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tb-field > span {
+  font: 500 11px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #77738b;
+}
+
+.tb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tb-row input[type="range"] {
+  flex: 1;
+  accent-color: #1e2a3a;
+}
+
+.tb-row input[type="number"] {
+  width: 54px;
+  font: 500 12px/1 "Jost", system-ui, sans-serif;
+  padding: 5px 6px;
+  border: 1px solid #d5d9df;
+  border-radius: 6px;
+}
+
+.tb-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.tb-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1px solid rgba(30, 42, 58, 0.2);
+  cursor: pointer;
+  padding: 0;
+}
+
+.tb-color[data-active="true"] {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.tb-colors input[type="color"] {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #d5d9df;
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
