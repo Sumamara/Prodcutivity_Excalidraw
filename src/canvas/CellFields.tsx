@@ -37,8 +37,10 @@ export function CellFields({
   const valuesRef = useRef<Record<string, string>>({});
   const layerRef = useRef<HTMLDivElement>(null);
 
-  // Editar con teclado/tocar: con cualquier herramienta que no sea de dibujo.
-  const interactive = !DRAW_TOOLS.has(activeToolType);
+  // Editar con teclado/tocar: con cualquier herramienta que no sea de dibujo
+  // NI selección (selección se usa para mover/seleccionar dibujos por encima).
+  const interactive =
+    !DRAW_TOOLS.has(activeToolType) && activeToolType !== "selection";
   // Escribir a mano con el Pencil (Scribble): solo con Texto (T).
   const scribble = activeToolType === "text";
 

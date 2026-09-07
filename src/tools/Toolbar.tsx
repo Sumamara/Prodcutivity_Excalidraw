@@ -6,9 +6,10 @@ import "./Toolbar.css";
 
 type Kind = "hand" | "selection" | "text" | "eraser";
 
+// "Seleccionar" no va aquí: se coloca junto a los lápices y, como ellos,
+// desactiva los campos de texto de la hoja.
 const KINDS: { id: Kind; label: string }[] = [
   { id: "hand", label: "Mover" },
-  { id: "selection", label: "Seleccionar" },
   { id: "text", label: "Texto" },
   { id: "eraser", label: "Borrador" },
 ];
@@ -200,6 +201,17 @@ export function Toolbar({
           />
         </button>
       ))}
+
+      <button
+        type="button"
+        className="tb-btn"
+        data-active={isActive("selection")}
+        title="Seleccionar · desactiva la escritura en la hoja"
+        aria-label="Seleccionar"
+        onClick={() => selectKind("selection")}
+      >
+        <KindIcon kind="selection" />
+      </button>
 
       <span className="tb-sep" />
 
