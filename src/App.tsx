@@ -35,16 +35,26 @@ export function App() {
   const cellsAnchorRef = useRef<HTMLDivElement>(null);
   const hotspotsClose = useRef<(() => void) | null>(null);
   const lastVp = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
+  const lastTransform = useRef("");
 
   useEffect(() => {
     cleanupLegacyStorage();
   }, []);
 
+  // Al cambiar de fecha/sección los anchors son nodos nuevos (sin transform):
+  // olvidamos el último transform para que el siguiente encaje sí lo aplique.
+  useEffect(() => {
+    lastTransform.current = "";
+  }, [sectionId, date]);
+
   // Anclamos hoja y zonas interactivas al viewport de Excalidraw con el mismo
-  // transform, sin re-render en cada frame. Al mover o hacer zoom cerramos el
-  // popover para que no quede descolgado.
+  // transform, sin re-render en cada frame. Si el transform no cambió (p. ej.
+  // durante un trazo), salimos sin tocar el DOM: 3 capas menos que recomponer.
   const handleViewport = useCallback((v: Viewport) => {
     const t = `translate(${v.scrollX * v.zoom}px, ${v.scrollY * v.zoom}px) scale(${v.zoom})`;
+    if (t === lastTransform.current) return;
+    lastTransform.current = t;
+
     if (anchorRef.current) anchorRef.current.style.transform = t;
     if (hotspotsAnchorRef.current) hotspotsAnchorRef.current.style.transform = t;
     if (cellsAnchorRef.current) cellsAnchorRef.current.style.transform = t;

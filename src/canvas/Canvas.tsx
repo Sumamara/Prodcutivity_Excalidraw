@@ -144,13 +144,23 @@ export function Canvas({
         onToolChange?.(tool);
       }
 
-      lastViewport.current = {
-        scrollX: appState.scrollX,
-        scrollY: appState.scrollY,
-        zoom: appState.zoom.value,
-      };
-      if (rafRef.current == null) {
-        rafRef.current = requestAnimationFrame(flushViewport);
+      // Solo tocar el viewport cuando scroll o zoom CAMBIAN de verdad. Durante
+      // un trazo no cambian: así no programamos rAF ni reescribimos el
+      // transform de 3 capas en cada frame del lápiz (libera el hilo principal).
+      const vp = lastViewport.current;
+      if (
+        appState.scrollX !== vp.scrollX ||
+        appState.scrollY !== vp.scrollY ||
+        appState.zoom.value !== vp.zoom
+      ) {
+        lastViewport.current = {
+          scrollX: appState.scrollX,
+          scrollY: appState.scrollY,
+          zoom: appState.zoom.value,
+        };
+        if (rafRef.current == null) {
+          rafRef.current = requestAnimationFrame(flushViewport);
+        }
       }
     },
     [persist, flushViewport, onToolChange],
