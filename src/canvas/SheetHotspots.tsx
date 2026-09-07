@@ -179,7 +179,7 @@ function Popover({
                 className="hs-scale-more"
                 onClick={onOpenMeter}
               >
-                Ver matriz completa · 100 emociones
+                Ver emociones
               </button>
             </div>
           )}
