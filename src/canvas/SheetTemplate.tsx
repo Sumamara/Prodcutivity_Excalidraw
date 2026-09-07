@@ -240,6 +240,10 @@ export function SheetTemplate() {
       <text x={758} y={92} fontSize={10.5} fill={NAVY}>
         Crear antes de consumir
       </text>
+      <Box x={740} y={116 - 9} />
+      <text x={758} y={116} fontSize={10.5} fill={NAVY}>
+        Revisión +∆
+      </text>
 
       {/* ---- cabecera de la tabla ---- */}
       <rect x={TABLE_L} y={TABLE_T} width={TABLE_R - TABLE_L} height={HROW} fill={NAVY} />
