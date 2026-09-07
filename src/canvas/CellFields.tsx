@@ -11,8 +11,12 @@ const DRAW_TOOLS = new Set(["freedraw", "eraser", "laser"]);
 /**
  * Campos de escritura digital, uno por celda de la tabla. Van dentro de un
  * anchor que App transforma igual que la hoja, así quedan alineados a cualquier
- * zoom. `pointer-events` solo se activa cuando NO hay un lápiz/borrador activo,
- * de modo que escribir a mano por encima nunca queda bloqueado.
+ * zoom.
+ *
+ * - Teclado / tocar para editar: siempre que NO haya un lápiz/borrador activo.
+ * - Escribir a mano con el Pencil (Scribble de iPadOS lo pasa a texto): solo
+ *   con la herramienta Texto (T) activa. Con selección o mover, el toque del
+ *   Pencil sobre una celda se ignora (no la enfoca, no dispara Scribble).
  *
  * Inputs no controlados: el valor vive en un ref y se guarda con debounce, así
  * teclear no re-renderiza los campos. Se monta con key={fecha:sección} desde
@@ -33,7 +37,10 @@ export function CellFields({
   const valuesRef = useRef<Record<string, string>>({});
   const layerRef = useRef<HTMLDivElement>(null);
 
+  // Editar con teclado/tocar: con cualquier herramienta que no sea de dibujo.
   const interactive = !DRAW_TOOLS.has(activeToolType);
+  // Escribir a mano con el Pencil (Scribble): solo con Texto (T).
+  const scribble = activeToolType === "text";
 
   const flush = useMemo(
     () =>
@@ -97,7 +104,15 @@ export function CellFields({
               ok ? markSaved() : markError(),
             )
           }
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            // Sin la herramienta Texto, el Pencil no interactúa con la celda:
+            // no la enfoca y así iPadOS no arranca Scribble.
+            if (e.pointerType === "pen" && !scribble) {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
           onKeyDown={(e) => e.stopPropagation()}
         />
       ))}
