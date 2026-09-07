@@ -67,6 +67,72 @@
   outline-offset: 1px;
 }
 
+/* ---- popover de escala 1–10 ---- */
+.hs-pop-scale {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 24px);
+}
+
+.hs-pop-scale .hs-pop-x {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.hs-pop-scale .hs-pop-x:hover {
+  color: #ffffff;
+}
+
+.hs-scale-head {
+  color: #ffffff;
+  font: 600 13px/1.3 "Jost", system-ui, sans-serif;
+  padding: 11px 34px 11px 14px;
+}
+
+.hs-scale-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  overflow-y: auto;
+}
+
+.hs-scale-bar {
+  flex: 0 0 6px;
+  align-self: stretch;
+  border-radius: 3px;
+}
+
+.hs-scale-rows {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.hs-scale-rows li {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.hs-scale-n {
+  min-width: 16px;
+  text-align: right;
+  font: 700 13px/1 "Jost", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.hs-scale-label {
+  font: 400 12px/1.3 "Jost", system-ui, sans-serif;
+  color: #3d4653;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hs-dot {
     transition: none;

@@ -1,7 +1,7 @@
 import { useEffect, useState, type MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 
-import type { Hotspot } from "./hotspot";
+import type { Hotspot, ScaleLegend } from "./hotspot";
 import "./SheetHotspots.css";
 
 interface OpenState {
@@ -87,6 +87,7 @@ export function SheetHotspots({
             rect={open.rect}
             title={current.title}
             body={current.body}
+            scale={current.scale}
             onClose={() => setOpen(null)}
           />,
           document.body,
@@ -99,26 +100,29 @@ function Popover({
   rect,
   title,
   body,
+  scale,
   onClose,
 }: {
   rect: DOMRect;
   title: string;
   body: string;
+  scale?: ScaleLegend;
   onClose: () => void;
 }) {
-  const POP_W = 250;
-  const EST_H = 150;
+  const POP_W = scale ? 262 : 250;
+  const EST_H = scale ? 400 : 150;
 
   let top = rect.bottom + 8;
-  if (top + EST_H > window.innerHeight) {
-    top = Math.max(8, rect.top - 8 - EST_H);
+  if (top + EST_H > window.innerHeight - 8) {
+    top = rect.top - 8 - EST_H;
   }
+  top = Math.max(8, top);
   let left = rect.left + rect.width / 2 - POP_W / 2;
   left = Math.min(Math.max(8, left), window.innerWidth - POP_W - 8);
 
   return (
     <div
-      className="hs-pop"
+      className={scale ? "hs-pop hs-pop-scale" : "hs-pop"}
       style={{ top, left, width: POP_W }}
       role="dialog"
       aria-label={title}
@@ -132,8 +136,39 @@ function Popover({
       >
         ×
       </button>
-      <div className="hs-pop-title">{title}</div>
-      <p className="hs-pop-body">{body}</p>
+
+      {scale ? (
+        <>
+          <div className="hs-scale-head" style={{ background: scale.accent }}>
+            {title}
+          </div>
+          <div className="hs-scale-body">
+            <span
+              className="hs-scale-bar"
+              style={{
+                background: `linear-gradient(${scale.rows
+                  .map((r) => r.color)
+                  .join(",")})`,
+              }}
+            />
+            <ul className="hs-scale-rows">
+              {scale.rows.map((r) => (
+                <li key={r.n}>
+                  <span className="hs-scale-n" style={{ color: r.color }}>
+                    {r.n}
+                  </span>
+                  <span className="hs-scale-label">{r.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="hs-pop-title">{title}</div>
+          <p className="hs-pop-body">{body}</p>
+        </>
+      )}
     </div>
   );
 }

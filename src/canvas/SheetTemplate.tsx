@@ -7,7 +7,12 @@
  * El SVG se ancla al viewport de Excalidraw (scroll + zoom) desde App.tsx.
  */
 
-import type { Hotspot } from "./hotspot";
+import type { Hotspot, ScaleLegend } from "./hotspot";
+import {
+  ACTIVACION_SCALE,
+  AGRADABILIDAD_SCALE,
+  ENERGIA_SCALE,
+} from "./scales";
 
 /** Lienzo virtual de esta plantilla (apaisado). */
 export const SHEET_SIZE = { w: 1000, h: 750 };
@@ -71,15 +76,20 @@ const PROD_COL1 = [
   { y: 140, t: "¡Enfocarse en terminar!" },
 ];
 
-const NARROW_COLS = [
+const NARROW_COLS: {
+  id: string;
+  title: string;
+  body: string;
+  scale?: ScaleLegend;
+}[] = [
   { id: "esp", title: "Esp · horas esperadas", body: "Horas que calculas que te llevará el objetivo, antes de empezar." },
   { id: "real", title: "Real · horas reales", body: "Horas que te llevó de verdad. Compáralo con Esp para calibrar tus estimaciones." },
   { id: "ti", title: "Ti · tiempo inicial", body: "Hora a la que empiezas la tarea." },
   { id: "tf", title: "Tf · tiempo final", body: "Hora a la que la terminas." },
-  { id: "energia", title: "⚡ · energía", body: "Tu nivel de energía mientras la haces, de 0 a 10." },
-  { id: "ag", title: "Ag · agradabilidad", body: "Cuánto te gustó hacerla, de 0 a 10." },
-  { id: "ac", title: "Ac · activación", body: "Cuánta tensión o activación sentiste, de 0 a 10." },
-  { id: "ev", title: "Ev · evitación", body: "¿La estabas usando para evitar otra cosa? De 0 a 10." },
+  { id: "energia", title: "¿Nivel de energía?", body: "Tu energía mientras la haces, de 1 a 10.", scale: ENERGIA_SCALE },
+  { id: "ag", title: "¿Agradabilidad?", body: "Cuánto te gustó hacerla, de 1 a 10.", scale: AGRADABILIDAD_SCALE },
+  { id: "ac", title: "¿Nivel de activación?", body: "Cuánta activación sentiste, de 1 a 10.", scale: ACTIVACION_SCALE },
+  { id: "ev", title: "Ev · evitación", body: "¿La estabas usando para evitar otra cosa? De 1 a 10." },
 ];
 
 const COL_LEFT = [TABLE_L, ...V_BORDERS.slice(0, 7)]; // 30, 70, 110, 140, 170, 200, 230, 260
