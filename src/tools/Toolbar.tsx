@@ -6,12 +6,10 @@ import "./Toolbar.css";
 
 type Kind = "hand" | "selection" | "text" | "eraser";
 
-// "Seleccionar" no va aquí: se coloca junto a los lápices y, como ellos,
-// desactiva los campos de texto de la hoja.
+// Arriba: Texto y Mover. "Seleccionar" y "Borrador" van junto a los lápices.
 const KINDS: { id: Kind; label: string }[] = [
-  { id: "hand", label: "Mover" },
   { id: "text", label: "Texto" },
-  { id: "eraser", label: "Borrador" },
+  { id: "hand", label: "Mover" },
 ];
 
 const SWATCHES = [
@@ -211,6 +209,17 @@ export function Toolbar({
         onClick={() => selectKind("selection")}
       >
         <KindIcon kind="selection" />
+      </button>
+
+      <button
+        type="button"
+        className="tb-btn"
+        data-active={isActive("eraser")}
+        title="Borrador"
+        aria-label="Borrador"
+        onClick={() => selectKind("eraser")}
+      >
+        <KindIcon kind="eraser" />
       </button>
 
       <span className="tb-sep" />
