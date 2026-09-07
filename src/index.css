@@ -89,6 +89,19 @@ body {
   outline-offset: -2px;
 }
 
+/* Sección sin fecha (Descansos activos): en vez del selector de fecha. */
+.date-static {
+  margin-left: auto;
+  margin-bottom: 6px;
+  padding: 6px 9px;
+  font: 500 10.5px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8b86a4;
+  border: 1px dashed #cfd3da;
+  border-radius: 6px;
+}
+
 /* ---- espacio de trabajo (marco de la hoja) ---- */
 .workspace {
   flex: 1 1 auto;

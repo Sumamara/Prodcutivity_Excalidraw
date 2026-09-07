@@ -63,7 +63,9 @@ export function App() {
 
   const Template = active.Template;
   const sheetStyle = { width: active.width, height: active.height };
-  const key = `${date}:${sectionId}`;
+  // Descansos activos no cambia con el día: se guarda bajo una clave fija.
+  const effDate = active.dateScoped ? date : "global";
+  const key = `${effDate}:${sectionId}`;
 
   return (
     <div className="app-shell">
@@ -80,7 +82,13 @@ export function App() {
             {s.label}
           </button>
         ))}
-        <DateBar date={date} onChange={setDate} />
+        {active.dateScoped ? (
+          <DateBar date={date} onChange={setDate} />
+        ) : (
+          <span className="date-static" title="Esta hoja es fija, no cambia con el día">
+            Sin fecha · referencia
+          </span>
+        )}
         <SaveIndicator />
       </header>
 
@@ -94,7 +102,7 @@ export function App() {
 
           <Canvas
             key={key}
-            date={date}
+            date={effDate}
             sectionId={sectionId}
             sheetW={active.width}
             sheetH={active.height}
@@ -112,7 +120,7 @@ export function App() {
               >
                 <CellFields
                   key={key}
-                  date={date}
+                  date={effDate}
                   sectionId={sectionId}
                   cells={active.cells}
                   activeToolType={toolType}

@@ -27,6 +27,12 @@ export interface Section {
   /** Tamaño del lienzo virtual de esta plantilla (px a zoom 100%). */
   width: number;
   height: number;
+  /**
+   * `true` (por defecto): una hoja por día (Concentración, Time blocking).
+   * `false`: una sola hoja persistente que no cambia con la fecha (Descansos
+   * activos es una lista de referencia que vas construyendo).
+   */
+  dateScoped: boolean;
   /** Zonas interactivas con explicación. */
   hotspots: Hotspot[];
   /** Celdas con campo de escritura digital (opcional). */
@@ -40,6 +46,7 @@ export const SECTIONS: Section[] = [
     Template: SheetTemplate,
     width: CONCENTRACION_SIZE.w,
     height: CONCENTRACION_SIZE.h,
+    dateScoped: true,
     hotspots: CONCENTRACION_HOTSPOTS,
     cells: CONCENTRACION_CELLS,
   },
@@ -49,6 +56,7 @@ export const SECTIONS: Section[] = [
     Template: TimeBlockingTemplate,
     width: TIME_BLOCKING_SIZE.w,
     height: TIME_BLOCKING_SIZE.h,
+    dateScoped: true,
     hotspots: TIME_BLOCKING_HOTSPOTS,
   },
   {
@@ -57,6 +65,7 @@ export const SECTIONS: Section[] = [
     Template: MenuDiaTemplate,
     width: MENU_DIA_SIZE.w,
     height: MENU_DIA_SIZE.h,
+    dateScoped: false,
     hotspots: MENU_DIA_HOTSPOTS,
   },
 ];

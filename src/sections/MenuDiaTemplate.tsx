@@ -208,8 +208,11 @@ export function MenuDiaTemplate() {
         strokeWidth={2}
       />
 
-      <text x={28} y={44} fontSize={22} letterSpacing={2} fill={NAVY}>
+      <text x={28} y={42} fontSize={22} letterSpacing={2} fill={NAVY}>
         MENÚ DESCANSOS ACTIVA
+      </text>
+      <text x={28} y={56} fontSize={9} letterSpacing={1} fill={FAINT}>
+        Lista de referencia · no cambia con el día
       </text>
       <path d="M940,44 L956,18 L966,32 L972,24 L982,44 Z" fill={NAVY} />
 
