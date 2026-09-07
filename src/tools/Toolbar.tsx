@@ -143,6 +143,27 @@ export function Toolbar({
       onPointerDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
+      <button
+        type="button"
+        className="tb-btn"
+        title="Deshacer"
+        aria-label="Deshacer"
+        onClick={nativeHistory("undo")}
+      >
+        <UndoIcon />
+      </button>
+      <button
+        type="button"
+        className="tb-btn"
+        title="Rehacer"
+        aria-label="Rehacer"
+        onClick={nativeHistory("redo")}
+      >
+        <RedoIcon />
+      </button>
+
+      <span className="tb-sep" />
+
       {KINDS.map((k) => (
         <button
           key={k.id}
@@ -314,6 +335,34 @@ function clamp(v: string, min: number, max: number): number {
   return Math.max(min, Math.min(n, max));
 }
 
+/**
+ * Excalidraw no expone undo/redo en su API, así que pulsamos su botón nativo
+ * (que ocultamos por CSS). `.click()` funciona aunque esté display:none.
+ */
+function nativeHistory(kind: "undo" | "redo") {
+  return () => {
+    const btn = document.querySelector<HTMLButtonElement>(
+      `.excalidraw .${kind}-button-container button`,
+    );
+    if (btn) {
+      btn.click();
+      return;
+    }
+    // Fallback (layouts estrechos sin barra inferior): atajo de teclado.
+    const target = document.querySelector(".excalidraw") ?? document;
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "z",
+        code: "KeyZ",
+        ctrlKey: true,
+        shiftKey: kind === "redo",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  };
+}
+
 /* ---- iconos ---- */
 
 function KindIcon({ kind }: { kind: Kind }) {
@@ -388,6 +437,44 @@ function PenModeIcon() {
     >
       <path d="M15 4l5 5L9 20l-5 1 1-5z" />
       <path d="M13 6l5 5" />
+    </svg>
+  );
+}
+
+function UndoIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 7L4 12l5 5" />
+      <path d="M4 12h11a5 5 0 0 1 0 10h-3" />
+    </svg>
+  );
+}
+
+function RedoIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 7l5 5-5 5" />
+      <path d="M20 12H9a5 5 0 0 0 0 10h3" />
     </svg>
   );
 }

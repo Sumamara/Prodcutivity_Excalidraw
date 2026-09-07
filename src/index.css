@@ -167,12 +167,16 @@ body {
 
 /* Usamos barra propia (src/tools/Toolbar): ocultamos la UI nativa de
    Excalidraw — barra de herramientas, menú de las 3 rayas, panel de estilos,
-   botón de ayuda y de biblioteca. Los atajos de teclado siguen funcionando. */
+   ayuda, biblioteca y los botones deshacer/rehacer (los movimos a la barra
+   vertical; se siguen pulsando por debajo con .click()). Los atajos de teclado
+   siguen funcionando. */
 .excalidraw-wrapper .excalidraw .App-toolbar-container,
 .excalidraw-wrapper .excalidraw .App-menu_top__left,
 .excalidraw-wrapper .excalidraw .dropdown-menu-button,
 .excalidraw-wrapper .excalidraw .mobile-misc-tools-container,
 .excalidraw-wrapper .excalidraw .help-icon,
-.excalidraw-wrapper .excalidraw .default-sidebar-trigger {
+.excalidraw-wrapper .excalidraw .default-sidebar-trigger,
+.excalidraw-wrapper .excalidraw .undo-button-container,
+.excalidraw-wrapper .excalidraw .redo-button-container {
   display: none !important;
 }

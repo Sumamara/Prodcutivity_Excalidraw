@@ -10,6 +10,7 @@ import {
 } from "./canvas/persistence";
 import type { ExcalidrawAPI } from "./canvas/types";
 import { DateBar } from "./DateBar";
+import { SaveIndicator } from "./SaveIndicator";
 import { todayISO } from "./dates";
 import { Toolbar } from "./tools/Toolbar";
 import {
@@ -80,6 +81,7 @@ export function App() {
           </button>
         ))}
         <DateBar date={date} onChange={setDate} />
+        <SaveIndicator />
       </header>
 
       <div className="workspace">

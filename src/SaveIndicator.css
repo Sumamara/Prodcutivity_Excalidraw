@@ -1,0 +1,71 @@
+.save-ind {
+  position: relative;
+  margin-left: 6px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.save-ind-btn {
+  position: relative;
+  width: 30px;
+  height: 28px;
+  border: 1px solid #d5d9df;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #5b6472;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.save-ind-btn:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.save-ind-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 1px;
+  border-radius: 999px;
+  font: 700 9px/13px "Jost", system-ui, sans-serif;
+  text-align: center;
+  color: #ffffff;
+  background: #57ab5a;
+  border: 1.5px solid #eceef1;
+}
+
+.save-ind[data-status="pending"] .save-ind-btn {
+  color: #a8730f;
+}
+.save-ind[data-status="pending"] .save-ind-badge {
+  background: #d9a441;
+}
+
+.save-ind[data-status="error"] .save-ind-btn {
+  color: #c0392b;
+  border-color: #c0392b;
+}
+.save-ind[data-status="error"] .save-ind-badge {
+  background: #c0392b;
+}
+
+.save-ind-tip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  white-space: nowrap;
+  background: #1e2a3a;
+  color: #ffffff;
+  font: 500 11px/1 "Jost", system-ui, sans-serif;
+  padding: 7px 9px;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(30, 42, 58, 0.25);
+  z-index: 60;
+}

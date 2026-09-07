@@ -58,11 +58,13 @@ export async function putSceneJSON(
   date: string,
   section: string,
   json: string,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await db.scenes.put({ key: rowKey(date, section), json, updated: Date.now() });
+    return true;
   } catch (err) {
     console.warn("[db] putSceneJSON", err);
+    return false;
   }
 }
 
@@ -83,10 +85,12 @@ export async function putCells(
   date: string,
   section: string,
   values: Record<string, string>,
-): Promise<void> {
+): Promise<boolean> {
   try {
     await db.cells.put({ key: rowKey(date, section), values, updated: Date.now() });
+    return true;
   } catch (err) {
     console.warn("[db] putCells", err);
+    return false;
   }
 }

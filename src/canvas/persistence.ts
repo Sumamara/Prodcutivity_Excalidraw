@@ -21,12 +21,13 @@ export async function saveScene(
   elements: SceneElements,
   appState: SceneAppState,
   files: SceneFiles,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const json = serializeAsJSON(elements, appState, files, "local");
-    await putSceneJSON(date, sectionId, json);
+    return await putSceneJSON(date, sectionId, json);
   } catch (err) {
     console.warn("[persistence] no se pudo guardar la escena", err);
+    return false;
   }
 }
 
@@ -68,8 +69,8 @@ export async function saveCells(
   date: string,
   sectionId: string,
   values: Record<string, string>,
-): Promise<void> {
-  await putCells(date, sectionId, values);
+): Promise<boolean> {
+  return putCells(date, sectionId, values);
 }
 
 export function loadActiveSection(): string | null {

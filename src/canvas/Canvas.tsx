@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
+import { markError, markPending, markSaved } from "../saveStatus";
 import { debounce, loadScene, saveScene } from "./persistence";
 import {
   FIT_PAD_LEFT,
@@ -75,8 +76,9 @@ export function Canvas({
   const lastViewport = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
   const lastTool = useRef<string>("");
   const latestScene = useRef<SceneSnapshot | null>(null);
-  const [ready, setReady] = useState(false);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const lastEls = useRef<SceneElements | null>(null);
+  const lastFiles = useRef<SceneFiles | null>(null);
+  const firstChange = useRef(true);
 
   // Excalidraw acepta una promesa como initialData y muestra su propio
   // "cargando" mientras resuelve. Canvas se monta con key={fecha:sección}, así
@@ -107,7 +109,7 @@ export function Canvas({
     () =>
       debounce((snap: SceneSnapshot) => {
         void saveScene(date, sectionId, snap.els, snap.state, snap.files).then(
-          () => setSavedAt(new Date().toLocaleTimeString()),
+          (ok) => (ok ? markSaved() : markError()),
         );
       }, AUTOSAVE_MS),
     [date, sectionId],
@@ -122,7 +124,19 @@ export function Canvas({
     (elements: SceneElements, appState: SceneAppState, files: SceneFiles) => {
       const snap: SceneSnapshot = { els: elements, state: appState, files };
       latestScene.current = snap;
-      persist(snap);
+
+      // Guardar solo cuando cambian elementos o archivos, no al hacer pan/zoom.
+      // El primer onChange (tras montar) es solo la escena cargada: baseline.
+      if (firstChange.current) {
+        firstChange.current = false;
+        lastEls.current = elements;
+        lastFiles.current = files;
+      } else if (elements !== lastEls.current || files !== lastFiles.current) {
+        lastEls.current = elements;
+        lastFiles.current = files;
+        markPending();
+        persist(snap);
+      }
 
       const tool = appState.activeTool.type;
       if (tool !== lastTool.current) {
@@ -174,7 +188,6 @@ export function Canvas({
   const onApi = useCallback(
     (api: ExcalidrawAPI) => {
       apiRef.current = api;
-      setReady(true);
       onApiReady?.(api);
       // Ahora y de nuevo en los siguientes frames, por si Excalidraw reajusta
       // su propio viewport justo después de montar.
@@ -190,7 +203,11 @@ export function Canvas({
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       const s = latestScene.current;
-      if (s) void saveScene(date, sectionId, s.els, s.state, s.files);
+      if (s) {
+        void saveScene(date, sectionId, s.els, s.state, s.files).then((ok) =>
+          ok ? markSaved() : markError(),
+        );
+      }
     };
   }, [date, sectionId]);
 
@@ -207,39 +224,6 @@ export function Canvas({
           },
         }}
       />
-      <SaveBadge savedAt={savedAt} ready={ready} />
-    </div>
-  );
-}
-
-function SaveBadge({
-  savedAt,
-  ready,
-}: {
-  savedAt: string | null;
-  ready: boolean;
-}) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 12,
-        right: 12,
-        zIndex: 5,
-        padding: "4px 10px",
-        borderRadius: 999,
-        font: "500 12px/1.4 system-ui, sans-serif",
-        background: "#ffffff",
-        color: "#555",
-        boxShadow: "0 1px 4px rgba(0,0,0,.15)",
-        pointerEvents: "none",
-      }}
-    >
-      {!ready
-        ? "Cargando…"
-        : savedAt
-          ? `Guardado local · ${savedAt}`
-          : "Guardado local activo"}
     </div>
   );
 }

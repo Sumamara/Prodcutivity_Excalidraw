@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { markError, markPending, markSaved } from "../saveStatus";
 import { debounce, loadCells, saveCells } from "./persistence";
 import type { Cell } from "./SheetTemplate";
 import "./CellFields.css";
@@ -35,7 +36,12 @@ export function CellFields({
   const interactive = !DRAW_TOOLS.has(activeToolType);
 
   const flush = useMemo(
-    () => debounce(() => void saveCells(date, sectionId, valuesRef.current), 500),
+    () =>
+      debounce(() => {
+        void saveCells(date, sectionId, valuesRef.current).then((ok) =>
+          ok ? markSaved() : markError(),
+        );
+      }, 500),
     [date, sectionId],
   );
 
@@ -83,9 +89,14 @@ export function CellFields({
           aria-hidden={!interactive}
           onInput={(e) => {
             valuesRef.current[c.id] = (e.target as HTMLInputElement).value;
+            markPending();
             flush();
           }}
-          onBlur={() => void saveCells(date, sectionId, valuesRef.current)}
+          onBlur={() =>
+            void saveCells(date, sectionId, valuesRef.current).then((ok) =>
+              ok ? markSaved() : markError(),
+            )
+          }
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         />
