@@ -1,10 +1,16 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Canvas, type Viewport } from "./canvas/Canvas";
 import { CellFields } from "./canvas/CellFields";
 import { SheetHotspots } from "./canvas/SheetHotspots";
-import { loadActiveSection, saveActiveSection } from "./canvas/persistence";
+import {
+  cleanupLegacyStorage,
+  loadActiveSection,
+  saveActiveSection,
+} from "./canvas/persistence";
 import type { ExcalidrawAPI } from "./canvas/types";
+import { DateBar } from "./DateBar";
+import { todayISO } from "./dates";
 import { Toolbar } from "./tools/Toolbar";
 import {
   DEFAULT_SECTION_ID,
@@ -13,6 +19,8 @@ import {
 } from "./sections/registry";
 
 export function App() {
+  // Fecha global para las 3 pestañas. Al abrir, siempre hoy (no se restaura).
+  const [date, setDate] = useState(() => todayISO());
   const [sectionId, setSectionId] = useState(
     () => loadActiveSection() ?? DEFAULT_SECTION_ID,
   );
@@ -26,6 +34,10 @@ export function App() {
   const cellsAnchorRef = useRef<HTMLDivElement>(null);
   const hotspotsClose = useRef<(() => void) | null>(null);
   const lastVp = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
+
+  useEffect(() => {
+    cleanupLegacyStorage();
+  }, []);
 
   // Anclamos hoja y zonas interactivas al viewport de Excalidraw con el mismo
   // transform, sin re-render en cada frame. Al mover o hacer zoom cerramos el
@@ -50,6 +62,7 @@ export function App() {
 
   const Template = active.Template;
   const sheetStyle = { width: active.width, height: active.height };
+  const key = `${date}:${sectionId}`;
 
   return (
     <div className="app-shell">
@@ -66,6 +79,7 @@ export function App() {
             {s.label}
           </button>
         ))}
+        <DateBar date={date} onChange={setDate} />
       </header>
 
       <div className="workspace">
@@ -77,7 +91,8 @@ export function App() {
           </div>
 
           <Canvas
-            key={sectionId}
+            key={key}
+            date={date}
             sectionId={sectionId}
             sheetW={active.width}
             sheetH={active.height}
@@ -94,7 +109,8 @@ export function App() {
                 style={sheetStyle}
               >
                 <CellFields
-                  key={sectionId}
+                  key={key}
+                  date={date}
                   sectionId={sectionId}
                   cells={active.cells}
                   activeToolType={toolType}
@@ -110,7 +126,7 @@ export function App() {
               style={sheetStyle}
             >
               <SheetHotspots
-                key={sectionId}
+                key={key}
                 hotspots={active.hotspots}
                 closeRef={hotspotsClose}
               />

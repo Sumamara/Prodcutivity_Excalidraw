@@ -1,0 +1,58 @@
+.date-bar {
+  margin-left: auto;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.date-nav {
+  width: 26px;
+  height: 28px;
+  border: 1px solid #d5d9df;
+  border-radius: 6px;
+  background: #e0e3e8;
+  color: #5b6472;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.date-nav:hover {
+  color: #1e2a3a;
+}
+
+.date-nav:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.date-input {
+  font: 500 12px/1 "Jost", system-ui, sans-serif;
+  color: #1e2a3a;
+  padding: 5px 8px;
+  border: 1px solid #d5d9df;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.date-input:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.date-today {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #1e2a3a;
+  border-radius: 6px;
+  background: #1e2a3a;
+  color: #ffffff;
+  font: 500 12px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.date-today:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 2px;
+}

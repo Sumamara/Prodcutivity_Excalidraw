@@ -36,7 +36,10 @@ src/
     SheetHotspots.tsx  # zonas transparentes sobre la hoja + popover (recibe hotspots por prop)
     CellFields.tsx     # un <input> por celda de la tabla; interactivo salvo con lápiz/borrador activo
     hotspot.ts         # tipo Hotspot
-    persistence.ts     # saveScene/loadScene + loadCells/saveCells + sección activa (localStorage)
+    db.ts              # IndexedDB (Dexie): filas por "<fecha>::<sección>"
+    persistence.ts     # saveScene/loadScene + loadCells/saveCells (async, por fecha+sección)
+  dates.ts             # todayISO / shiftISO / formatHuman (ISO local YYYY-MM-DD)
+  DateBar.tsx          # selector de fecha global en la barra de pestañas
     types.ts           # tipos derivados de las props del componente
   sections/
     registry.ts             # SECTIONS: id, label, Template, hotspots

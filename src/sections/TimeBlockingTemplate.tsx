@@ -103,14 +103,10 @@ export function TimeBlockingTemplate() {
         strokeWidth={2}
       />
 
-      {/* ---- encabezado ---- */}
+      {/* ---- encabezado (la fecha va en la barra de pestañas) ---- */}
       <text x={28} y={48} fontSize={30} letterSpacing={4} fill={NAVY}>
         TIME BLOCKING
       </text>
-      <text x={430} y={40} fontSize={12} letterSpacing={3} fill={NAVY}>
-        FECHA
-      </text>
-      <line x1={485} y1={42} x2={655} y2={42} stroke={NAVY} strokeWidth={1} />
       <path d="M735,46 L752,22 L763,36 L770,27 L782,46 Z" fill={NAVY} />
 
       {/* ---- 3 prioridades ---- */}

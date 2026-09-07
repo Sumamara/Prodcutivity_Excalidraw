@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { debounce, loadCells, saveCells } from "./persistence";
 import type { Cell } from "./SheetTemplate";
@@ -14,27 +14,42 @@ const DRAW_TOOLS = new Set(["freedraw", "eraser", "laser"]);
  * de modo que escribir a mano por encima nunca queda bloqueado.
  *
  * Inputs no controlados: el valor vive en un ref y se guarda con debounce, así
- * teclear no re-renderiza los 180 campos.
+ * teclear no re-renderiza los campos. Se monta con key={fecha:sección} desde
+ * App, por eso basta cargar una vez.
  */
 export function CellFields({
+  date,
   sectionId,
   cells,
   activeToolType,
 }: {
+  date: string;
   sectionId: string;
   cells: Cell[];
   activeToolType: string;
 }) {
-  const initial = useMemo(() => loadCells(sectionId), [sectionId]);
-  const valuesRef = useRef<Record<string, string>>(initial);
+  const [initial, setInitial] = useState<Record<string, string> | null>(null);
+  const valuesRef = useRef<Record<string, string>>({});
   const layerRef = useRef<HTMLDivElement>(null);
 
   const interactive = !DRAW_TOOLS.has(activeToolType);
 
   const flush = useMemo(
-    () => debounce(() => saveCells(sectionId, valuesRef.current), 500),
-    [sectionId],
+    () => debounce(() => void saveCells(date, sectionId, valuesRef.current), 500),
+    [date, sectionId],
   );
+
+  useEffect(() => {
+    let alive = true;
+    loadCells(date, sectionId).then((v) => {
+      if (!alive) return;
+      valuesRef.current = v;
+      setInitial(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [date, sectionId]);
 
   // Al cambiar a modo dibujo, saca el foco de cualquier campo (cierra el
   // teclado en pantalla y evita seguir escribiendo sin querer).
@@ -44,10 +59,12 @@ export function CellFields({
     if (el instanceof HTMLElement && layerRef.current?.contains(el)) el.blur();
   }, [interactive]);
 
-  // Guardado inmediato al desmontar (cambio de sección).
+  // Guardado inmediato al desmontar (cambio de fecha/sección).
   useEffect(() => {
-    return () => saveCells(sectionId, valuesRef.current);
-  }, [sectionId]);
+    return () => void saveCells(date, sectionId, valuesRef.current);
+  }, [date, sectionId]);
+
+  if (!initial) return null;
 
   return (
     <div
@@ -68,7 +85,7 @@ export function CellFields({
             valuesRef.current[c.id] = (e.target as HTMLInputElement).value;
             flush();
           }}
-          onBlur={() => saveCells(sectionId, valuesRef.current)}
+          onBlur={() => void saveCells(date, sectionId, valuesRef.current)}
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         />

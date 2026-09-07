@@ -178,14 +178,10 @@ export function SheetTemplate() {
       role="img"
       aria-label="Hoja de concentración"
     >
-      {/* ---- encabezado ---- */}
+      {/* ---- encabezado (la fecha va en la barra de pestañas) ---- */}
       <text x={TABLE_L} y={34} fontSize={21} letterSpacing={3} fill={NAVY}>
         CONCENTRACIÓN
       </text>
-      <text x={648} y={30} fontSize={11} letterSpacing={3} fill={NAVY}>
-        FECHA
-      </text>
-      <line x1={702} y1={32} x2={905} y2={32} stroke={NAVY} strokeWidth={1} />
       <path d="M916,36 L932,14 L943,27 L949,20 L961,36 Z" fill={NAVY} />
 
       {/* ---- barras de panel ---- */}

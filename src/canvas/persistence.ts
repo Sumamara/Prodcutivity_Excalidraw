@@ -1,10 +1,9 @@
 import { serializeAsJSON } from "@excalidraw/excalidraw";
 
+import { getCells, getSceneJSON, putCells, putSceneJSON } from "./db";
 import type { SceneAppState, SceneElements, SceneFiles } from "./types";
 
-const SCENE_PREFIX = "journal-horas:scene:v1:";
 const ACTIVE_KEY = "journal-horas:active-section";
-const CELLS_PREFIX = "journal-horas:cells:v1:";
 
 export interface RestoredScene {
   elements: SceneElements;
@@ -13,27 +12,30 @@ export interface RestoredScene {
 }
 
 /**
- * Fase 1: una escena por sección, en `localStorage`. En la Fase 2 esto se
- * sustituye por un `upsert` contra Supabase (una fila `pages` por sección
- * con `scene_json` + `updated_at`).
+ * Guardado por (fecha, sección) en IndexedDB (ver db.ts). En la Fase 2 esto se
+ * sustituye por un `upsert` contra Supabase.
  */
-export function saveScene(
+export async function saveScene(
+  date: string,
   sectionId: string,
   elements: SceneElements,
   appState: SceneAppState,
   files: SceneFiles,
-): void {
+): Promise<void> {
   try {
     const json = serializeAsJSON(elements, appState, files, "local");
-    localStorage.setItem(SCENE_PREFIX + sectionId, json);
+    await putSceneJSON(date, sectionId, json);
   } catch (err) {
     console.warn("[persistence] no se pudo guardar la escena", err);
   }
 }
 
-export function loadScene(sectionId: string): RestoredScene | null {
+export async function loadScene(
+  date: string,
+  sectionId: string,
+): Promise<RestoredScene | null> {
   try {
-    const raw = localStorage.getItem(SCENE_PREFIX + sectionId);
+    const raw = await getSceneJSON(date, sectionId);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as {
@@ -54,37 +56,20 @@ export function loadScene(sectionId: string): RestoredScene | null {
   }
 }
 
-export function clearScene(sectionId: string): void {
-  try {
-    localStorage.removeItem(SCENE_PREFIX + sectionId);
-  } catch {
-    /* noop */
-  }
+/** Texto de los campos de celda por (fecha, sección): { "<col>-<fila>": valor }. */
+export async function loadCells(
+  date: string,
+  sectionId: string,
+): Promise<Record<string, string>> {
+  return getCells(date, sectionId);
 }
 
-/** Texto de los campos de celda por sección: { "<col>-<fila>": valor }. */
-export function loadCells(sectionId: string): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(CELLS_PREFIX + sectionId);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object"
-      ? (parsed as Record<string, string>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-export function saveCells(
+export async function saveCells(
+  date: string,
   sectionId: string,
   values: Record<string, string>,
-): void {
-  try {
-    localStorage.setItem(CELLS_PREFIX + sectionId, JSON.stringify(values));
-  } catch {
-    /* noop */
-  }
+): Promise<void> {
+  await putCells(date, sectionId, values);
 }
 
 export function loadActiveSection(): string | null {
@@ -98,6 +83,24 @@ export function loadActiveSection(): string | null {
 export function saveActiveSection(id: string): void {
   try {
     localStorage.setItem(ACTIVE_KEY, id);
+  } catch {
+    /* noop */
+  }
+}
+
+/** Limpia las claves de la versión anterior (localStorage sin fecha). */
+export function cleanupLegacyStorage(): void {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (
+        k &&
+        (k.startsWith("journal-horas:scene:v1:") ||
+          k.startsWith("journal-horas:cells:v1:"))
+      ) {
+        localStorage.removeItem(k);
+      }
+    }
   } catch {
     /* noop */
   }

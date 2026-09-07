@@ -33,6 +33,8 @@ export interface Viewport {
 }
 
 interface CanvasProps {
+  /** Fecha activa (ISO local YYYY-MM-DD): la escena se guarda por (fecha, sección). */
+  date: string;
   /** Sección activa: define qué escena se carga y se guarda. */
   sectionId: string;
   /** Tamaño de la hoja de la sección (unidades de escena = px a zoom 100%). */
@@ -59,6 +61,7 @@ type SceneSnapshot = {
  * cambiar de pestaña reinicia el lienzo con la escena de esa sección.
  */
 export function Canvas({
+  date,
   sectionId,
   sheetW,
   sheetH,
@@ -75,32 +78,39 @@ export function Canvas({
   const [ready, setReady] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
-  const initialData = useMemo<ExcalidrawInitialData>(() => {
-    const restored = loadScene(sectionId);
-    const appState = { ...restored?.appState };
-    // Nunca restauramos el viewport guardado: el encaje (fitSheet) manda.
-    delete appState.scrollX;
-    delete appState.scrollY;
-    delete appState.zoom;
-    return {
-      elements: restored?.elements ?? [],
-      appState: {
-        ...appState,
-        collaborators: undefined,
-        viewBackgroundColor: "transparent",
-        gridModeEnabled: false,
-      },
-      files: restored?.files,
-    };
-  }, [sectionId]);
+  // Excalidraw acepta una promesa como initialData y muestra su propio
+  // "cargando" mientras resuelve. Canvas se monta con key={fecha:sección}, así
+  // que este useMemo corre una vez por (fecha, sección).
+  const initialData = useMemo<ExcalidrawInitialData>(
+    () =>
+      loadScene(date, sectionId).then((restored) => {
+        const appState = { ...restored?.appState };
+        // Nunca restauramos el viewport guardado: el encaje (fitSheet) manda.
+        delete appState.scrollX;
+        delete appState.scrollY;
+        delete appState.zoom;
+        return {
+          elements: restored?.elements ?? [],
+          appState: {
+            ...appState,
+            collaborators: undefined,
+            viewBackgroundColor: "transparent",
+            gridModeEnabled: false,
+          },
+          files: restored?.files,
+        };
+      }),
+    [date, sectionId],
+  );
 
   const persist = useMemo(
     () =>
       debounce((snap: SceneSnapshot) => {
-        saveScene(sectionId, snap.els, snap.state, snap.files);
-        setSavedAt(new Date().toLocaleTimeString());
+        void saveScene(date, sectionId, snap.els, snap.state, snap.files).then(
+          () => setSavedAt(new Date().toLocaleTimeString()),
+        );
       }, AUTOSAVE_MS),
-    [sectionId],
+    [date, sectionId],
   );
 
   const flushViewport = useCallback(() => {
@@ -175,14 +185,14 @@ export function Canvas({
     [onApiReady, fitSheet],
   );
 
-  // Guardado inmediato al salir de la sección (por si el debounce no disparó).
+  // Guardado inmediato al salir de la fecha/sección (por si el debounce no disparó).
   useEffect(() => {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       const s = latestScene.current;
-      if (s) saveScene(sectionId, s.els, s.state, s.files);
+      if (s) void saveScene(date, sectionId, s.els, s.state, s.files);
     };
-  }, [sectionId]);
+  }, [date, sectionId]);
 
   return (
     <div className="excalidraw-wrapper" ref={wrapperRef}>

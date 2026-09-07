@@ -59,6 +59,7 @@ body {
 .app-tabs {
   flex: 0 0 auto;
   display: flex;
+  align-items: flex-end;
   gap: 4px;
   padding: 10px 14px 0;
 }
