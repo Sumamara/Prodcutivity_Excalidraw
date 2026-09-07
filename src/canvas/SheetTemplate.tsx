@@ -118,6 +118,40 @@ export const HOTSPOTS: Hotspot[] = [
   },
 ];
 
+/**
+ * Celdas de la tabla como campos de escritura digital: 8 columnas estrechas
+ * (num) + la ancha "Objetivo / Comentario" (text), por cada una de las 20
+ * filas. Mismo sistema de coordenadas que el SVG (ver CellFields + App).
+ */
+export interface Cell {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind: "num" | "text";
+}
+
+export const CELLS: Cell[] = (() => {
+  const cols = [
+    ...NARROW_COLS.map((c, i) => ({
+      key: c.id,
+      x: COL_LEFT[i],
+      w: V_BORDERS[i] - COL_LEFT[i],
+      kind: "num" as const,
+    })),
+    { key: "obj", x: 324, w: TABLE_R - 324, kind: "text" as const },
+  ];
+  const out: Cell[] = [];
+  for (let row = 0; row < BODY_ROWS; row++) {
+    const y = TABLE_T + HROW + row * BROW;
+    for (const c of cols) {
+      out.push({ id: `${c.key}-${row}`, x: c.x, y, w: c.w, h: BROW, kind: c.kind });
+    }
+  }
+  return out;
+})();
+
 function Box({ x, y, s = 11 }: { x: number; y: number; s?: number }) {
   return (
     <rect

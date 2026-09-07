@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { Canvas, type Viewport } from "./canvas/Canvas";
+import { CellFields } from "./canvas/CellFields";
 import { SheetHotspots } from "./canvas/SheetHotspots";
 import { loadActiveSection, saveActiveSection } from "./canvas/persistence";
 import type { ExcalidrawAPI } from "./canvas/types";
@@ -22,6 +23,7 @@ export function App() {
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
+  const cellsAnchorRef = useRef<HTMLDivElement>(null);
   const hotspotsClose = useRef<(() => void) | null>(null);
   const lastVp = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
 
@@ -32,6 +34,7 @@ export function App() {
     const t = `translate(${v.scrollX * v.zoom}px, ${v.scrollY * v.zoom}px) scale(${v.zoom})`;
     if (anchorRef.current) anchorRef.current.style.transform = t;
     if (hotspotsAnchorRef.current) hotspotsAnchorRef.current.style.transform = t;
+    if (cellsAnchorRef.current) cellsAnchorRef.current.style.transform = t;
 
     const p = lastVp.current;
     if (p.scrollX !== v.scrollX || p.scrollY !== v.scrollY || p.zoom !== v.zoom) {
@@ -79,6 +82,19 @@ export function App() {
             onApiReady={setApi}
             onToolChange={setToolType}
           />
+
+          {active.cells && active.cells.length > 0 && (
+            <div className="cells-layer">
+              <div className="cells-anchor" ref={cellsAnchorRef}>
+                <CellFields
+                  key={sectionId}
+                  sectionId={sectionId}
+                  cells={active.cells}
+                  activeToolType={toolType}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="hotspot-layer">
             <div className="hotspot-anchor" ref={hotspotsAnchorRef}>

@@ -133,6 +133,15 @@ body {
   font-family: "Jost", system-ui, sans-serif;
 }
 
+/* Capa de campos de escritura de las celdas, entre el lienzo y los hotspots. */
+.cells-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* Capa de zonas interactivas de la hoja (cabeceras), por encima del lienzo. */
 .hotspot-layer {
   position: absolute;
@@ -142,6 +151,7 @@ body {
   pointer-events: none;
 }
 
+.cells-anchor,
 .hotspot-anchor {
   position: absolute;
   top: 0;

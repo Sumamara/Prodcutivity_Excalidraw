@@ -4,6 +4,7 @@ import type { SceneAppState, SceneElements, SceneFiles } from "./types";
 
 const SCENE_PREFIX = "journal-horas:scene:v1:";
 const ACTIVE_KEY = "journal-horas:active-section";
+const CELLS_PREFIX = "journal-horas:cells:v1:";
 
 export interface RestoredScene {
   elements: SceneElements;
@@ -56,6 +57,31 @@ export function loadScene(sectionId: string): RestoredScene | null {
 export function clearScene(sectionId: string): void {
   try {
     localStorage.removeItem(SCENE_PREFIX + sectionId);
+  } catch {
+    /* noop */
+  }
+}
+
+/** Texto de los campos de celda por sección: { "<col>-<fila>": valor }. */
+export function loadCells(sectionId: string): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(CELLS_PREFIX + sectionId);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, string>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveCells(
+  sectionId: string,
+  values: Record<string, string>,
+): void {
+  try {
+    localStorage.setItem(CELLS_PREFIX + sectionId, JSON.stringify(values));
   } catch {
     /* noop */
   }

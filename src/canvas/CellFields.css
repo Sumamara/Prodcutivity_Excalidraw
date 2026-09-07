@@ -1,0 +1,39 @@
+.cell-fields {
+  position: absolute;
+  inset: 0;
+}
+
+.cell-input {
+  position: absolute;
+  margin: 0;
+  border: 0;
+  padding: 0 2px;
+  background: transparent;
+  color: #1e2a3a;
+  font: 400 13px/1 "Jost", system-ui, sans-serif;
+  outline: none;
+  /* Por defecto no captura el puntero: escribir a mano por encima manda. */
+  pointer-events: none;
+}
+
+.cell-fields.on .cell-input {
+  pointer-events: auto;
+}
+
+.cell-input::placeholder {
+  color: transparent;
+}
+
+.cell-input:focus {
+  background: rgba(242, 183, 5, 0.16);
+  border-radius: 2px;
+}
+
+.cell-num {
+  text-align: center;
+}
+
+.cell-text {
+  text-align: left;
+  padding-left: 6px;
+}

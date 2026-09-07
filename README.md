@@ -34,8 +34,9 @@ src/
     Canvas.tsx         # <Excalidraw> transparente por sección, ancla + encaja la hoja
     SheetTemplate.tsx  # plantilla "CONCENTRACIÓN" + COLUMN_MEANINGS + HOTSPOTS
     SheetHotspots.tsx  # zonas transparentes sobre la hoja + popover (recibe hotspots por prop)
+    CellFields.tsx     # un <input> por celda de la tabla; interactivo salvo con lápiz/borrador activo
     hotspot.ts         # tipo Hotspot
-    persistence.ts     # saveScene/loadScene por sección + sección activa (localStorage)
+    persistence.ts     # saveScene/loadScene + loadCells/saveCells + sección activa (localStorage)
     types.ts           # tipos derivados de las props del componente
   sections/
     registry.ts             # SECTIONS: id, label, Template, hotspots

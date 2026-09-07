@@ -1,6 +1,11 @@
 import type { ComponentType } from "react";
 
-import { SheetTemplate, HOTSPOTS as CONCENTRACION_HOTSPOTS } from "../canvas/SheetTemplate";
+import {
+  SheetTemplate,
+  HOTSPOTS as CONCENTRACION_HOTSPOTS,
+  CELLS as CONCENTRACION_CELLS,
+  type Cell,
+} from "../canvas/SheetTemplate";
 import type { Hotspot } from "../canvas/hotspot";
 import {
   TimeBlockingTemplate,
@@ -15,6 +20,8 @@ export interface Section {
   Template: ComponentType;
   /** Zonas interactivas con explicación. */
   hotspots: Hotspot[];
+  /** Celdas con campo de escritura digital (opcional). */
+  cells?: Cell[];
 }
 
 export const SECTIONS: Section[] = [
@@ -23,6 +30,7 @@ export const SECTIONS: Section[] = [
     label: "Concentración",
     Template: SheetTemplate,
     hotspots: CONCENTRACION_HOTSPOTS,
+    cells: CONCENTRACION_CELLS,
   },
   {
     id: "time-blocking",
