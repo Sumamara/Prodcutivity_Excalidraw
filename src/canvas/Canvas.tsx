@@ -26,10 +26,6 @@ if (import.meta.hot) {
 
 const AUTOSAVE_MS = 800;
 
-/** Tamaño de la hoja en unidades de escena (1 u = 1 px a zoom 100%). */
-export const SHEET_W = 1000;
-export const SHEET_H = 750;
-
 export interface Viewport {
   scrollX: number;
   scrollY: number;
@@ -39,6 +35,9 @@ export interface Viewport {
 interface CanvasProps {
   /** Sección activa: define qué escena se carga y se guarda. */
   sectionId: string;
+  /** Tamaño de la hoja de la sección (unidades de escena = px a zoom 100%). */
+  sheetW: number;
+  sheetH: number;
   /** Se llama (en rAF) cada vez que cambia scroll o zoom del lienzo. */
   onViewport: (v: Viewport) => void;
   /** Entrega la API de Excalidraw a App (para la barra propia). */
@@ -61,6 +60,8 @@ type SceneSnapshot = {
  */
 export function Canvas({
   sectionId,
+  sheetW,
+  sheetH,
   onViewport,
   onApiReady,
   onToolChange,
@@ -144,10 +145,10 @@ export function Canvas({
     const usableW = Math.max(1, w - FIT_PAD_LEFT - FIT_PAD_RIGHT);
     const usableH = Math.max(1, h - FIT_PAD_Y * 2);
 
-    const fit = Math.min(usableW / SHEET_W, usableH / SHEET_H) * FIT_SCALE;
+    const fit = Math.min(usableW / sheetW, usableH / sheetH) * FIT_SCALE;
     const zoom = Math.max(0.1, Math.min(fit, 30));
-    const scrollX = Math.round((FIT_PAD_LEFT + usableW / 2) / zoom - SHEET_W / 2);
-    const scrollY = Math.round((FIT_PAD_Y + usableH / 2) / zoom - SHEET_H / 2);
+    const scrollX = Math.round((FIT_PAD_LEFT + usableW / 2) / zoom - sheetW / 2);
+    const scrollY = Math.round((FIT_PAD_Y + usableH / 2) / zoom - sheetH / 2);
 
     api.updateScene({
       appState: {
@@ -158,7 +159,7 @@ export function Canvas({
     });
     lastViewport.current = { scrollX, scrollY, zoom };
     onViewport(lastViewport.current);
-  }, [onViewport]);
+  }, [onViewport, sheetW, sheetH]);
 
   const onApi = useCallback(
     (api: ExcalidrawAPI) => {

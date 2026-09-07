@@ -49,6 +49,7 @@ export function App() {
   }, []);
 
   const Template = active.Template;
+  const sheetStyle = { width: active.width, height: active.height };
 
   return (
     <div className="app-shell">
@@ -70,7 +71,7 @@ export function App() {
       <div className="workspace">
         <div className="page-frame">
           <div className="sheet-layer">
-            <div className="sheet-anchor" ref={anchorRef}>
+            <div className="sheet-anchor" ref={anchorRef} style={sheetStyle}>
               <Template />
             </div>
           </div>
@@ -78,6 +79,8 @@ export function App() {
           <Canvas
             key={sectionId}
             sectionId={sectionId}
+            sheetW={active.width}
+            sheetH={active.height}
             onViewport={handleViewport}
             onApiReady={setApi}
             onToolChange={setToolType}
@@ -85,7 +88,11 @@ export function App() {
 
           {active.cells && active.cells.length > 0 && (
             <div className="cells-layer">
-              <div className="cells-anchor" ref={cellsAnchorRef}>
+              <div
+                className="cells-anchor"
+                ref={cellsAnchorRef}
+                style={sheetStyle}
+              >
                 <CellFields
                   key={sectionId}
                   sectionId={sectionId}
@@ -97,7 +104,11 @@ export function App() {
           )}
 
           <div className="hotspot-layer">
-            <div className="hotspot-anchor" ref={hotspotsAnchorRef}>
+            <div
+              className="hotspot-anchor"
+              ref={hotspotsAnchorRef}
+              style={sheetStyle}
+            >
               <SheetHotspots
                 key={sectionId}
                 hotspots={active.hotspots}

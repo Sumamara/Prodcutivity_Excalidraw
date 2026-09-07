@@ -116,20 +116,10 @@ body {
   pointer-events: none;
 }
 
-/* Se ancla al viewport de Excalidraw vía transform (translate + scale). */
-.sheet-anchor {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1000px;
-  height: 750px;
-  transform-origin: 0 0;
-}
-
 .sheet-svg {
   display: block;
-  width: 1000px;
-  height: 750px;
+  width: 100%;
+  height: 100%;
   font-family: "Jost", system-ui, sans-serif;
 }
 
@@ -151,13 +141,14 @@ body {
   pointer-events: none;
 }
 
+/* Tamaño (width/height) inline por sección desde App; se ancla al viewport
+   de Excalidraw vía transform (translate + scale). */
+.sheet-anchor,
 .cells-anchor,
 .hotspot-anchor {
   position: absolute;
   top: 0;
   left: 0;
-  width: 1000px;
-  height: 750px;
   transform-origin: 0 0;
 }
 

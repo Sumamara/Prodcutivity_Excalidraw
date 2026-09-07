@@ -9,6 +9,9 @@
 
 import type { Hotspot } from "./hotspot";
 
+/** Lienzo virtual de esta plantilla (apaisado). */
+export const SHEET_SIZE = { w: 1000, h: 750 };
+
 /**
  * Significado de las columnas de la tabla. Se usará para conectar el panel de
  * objetivos y el registro de horas a cada fila en la siguiente iteración.
