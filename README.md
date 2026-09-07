@@ -55,11 +55,24 @@ npm run preview    # sirve el build
 npm run typecheck
 ```
 
-## App para iPad (Capacitor)
+## Deploy web (GitHub Pages)
+
+`.github/workflows/pages.yml` compila y publica en cada push a `main`.
+
+**Activarlo una vez:** GitHub → repo → *Settings* → *Pages* → *Build and
+deployment* → *Source* = **GitHub Actions**.
+
+- El workflow pasa `BASE_PATH=/<repo>/` al build (Vite `base`), así los assets
+  resuelven bajo el subpath de Pages.
+- URL final: `https://<usuario>.github.io/<repo>/`.
+- La pestaña *Actions* → *Deploy web (GitHub Pages)* muestra el estado y el link.
+- Local sigue en `/` (sin `BASE_PATH`); `npm run preview` para probar el build.
+
+## App para iPad (Capacitor) — EN PAUSA
 
 El proyecto `ios/` ya está generado (Capacitor 8, Swift Package Manager, sin
 CocoaPods). Se versiona entero; solo `ios/App/build`, `Pods` y `public` se
-ignoran.
+ignoran. El workflow `ios.yml` quedó en **solo manual** (no corre en push).
 
 ### Ruta elegida: build en la nube + sideload (sin Mac, solo tu iPad)
 

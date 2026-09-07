@@ -3,13 +3,12 @@ name: iOS IPA (sin firmar)
 # Compila la app de iPad en un runner macOS y sube un .ipa SIN FIRMAR como
 # artefacto. Ese .ipa se instala en el iPad desde Windows con SideStore o
 # AltStore (firman con tu Apple ID gratis al instalar).
+#
+# EN PAUSA: solo se lanza a mano (Actions -> este workflow -> Run workflow).
+# Así no gasta minutos de runner macOS en cada push.
 
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main, master]
-    paths-ignore:
-      - "**/*.md"
 
 jobs:
   build:
