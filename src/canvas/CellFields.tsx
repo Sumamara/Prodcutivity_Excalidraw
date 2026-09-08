@@ -115,6 +115,15 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
       );
       const el = editorRef.current;
       if (!c || !el) return;
+      if (c.id === editingRef.current) {
+        el.focus({ preventScroll: true });
+        return;
+      }
+      // El <input> es único y compartido: antes de moverlo a la celda nueva,
+      // confirma lo escrito en la anterior y muéstralo ya como texto.
+      syncEditor();
+      setValues({ ...valuesRef.current });
+
       el.value = valuesRef.current[c.id] ?? "";
       el.style.left = `${c.x}px`;
       el.style.top = `${c.y}px`;
