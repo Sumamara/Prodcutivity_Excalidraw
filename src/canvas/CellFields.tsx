@@ -42,6 +42,9 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
   const [loaded, setLoaded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const valuesRef = useRef<Record<string, string>>({});
+  // Solo guardar cuando la carga inicial ya terminó: si no, escribiríamos {}
+  // encima de los datos (p. ej. en el desmontar simulado de StrictMode).
+  const loadedRef = useRef(false);
   const editorRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef<string | null>(null);
   editingRef.current = editingId;
@@ -58,9 +61,11 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
 
   useEffect(() => {
     let alive = true;
+    loadedRef.current = false;
     loadCells(date, sectionId).then((v) => {
       if (!alive) return;
       valuesRef.current = v;
+      loadedRef.current = true;
       setValues(v);
       setLoaded(true);
     });
@@ -70,7 +75,9 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
   }, [date, sectionId]);
 
   useEffect(() => {
-    return () => void saveCells(date, sectionId, valuesRef.current);
+    return () => {
+      if (loadedRef.current) void saveCells(date, sectionId, valuesRef.current);
+    };
   }, [date, sectionId]);
 
   const commit = () => {
