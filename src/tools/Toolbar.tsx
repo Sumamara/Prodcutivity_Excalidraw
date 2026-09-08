@@ -40,6 +40,10 @@ export function Toolbar({
   const [panelOpen, setPanelOpen] = useState(false);
   const cfgRef = useRef(cfg);
   cfgRef.current = cfg;
+  // Último lápiz que el usuario tocó de verdad en esta sesión. El lápiz activo
+  // al montar viene de localStorage (activeId), no de un toque: sin esto, el
+  // primer toque sobre ese lápiz abriría los ajustes en vez de seleccionarlo.
+  const lastPencilTapRef = useRef<string | null>(null);
 
   const applyPencil = useCallback(
     (p: Pencil) => {
@@ -111,19 +115,30 @@ export function Toolbar({
 
   const selectPencil = (p: Pencil) => {
     onCellMode(false);
-    if (cfg.activeId === p.id) {
+    // Los ajustes solo se abren si este lápiz ya está dibujando (freedraw) Y el
+    // usuario lo tocó antes en esta sesión. El primer toque —incluido el del
+    // lápiz restaurado al abrir— solo lo selecciona.
+    const alreadyDrawing =
+      cfg.activeId === p.id && activeToolType === "freedraw";
+    if (alreadyDrawing && lastPencilTapRef.current === p.id) {
       setPanelOpen((o) => !o);
       return;
     }
-    const next = { ...cfg, activeId: p.id };
-    setCfg(next);
-    saveTools(next);
+    lastPencilTapRef.current = p.id;
+    if (cfg.activeId !== p.id) {
+      const next = { ...cfg, activeId: p.id };
+      setCfg(next);
+      saveTools(next);
+    }
     applyPencil(p);
     setPanelOpen(false);
   };
 
   const selectKind = (k: Kind) => {
     onCellMode(false);
+    // Tras usar mano/selección/borrador, el siguiente toque de lápiz vuelve a
+    // ser "solo seleccionar", nunca abrir ajustes.
+    lastPencilTapRef.current = null;
     const next = { ...cfg, activeId: k };
     setCfg(next);
     saveTools(next);
