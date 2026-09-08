@@ -80,19 +80,6 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
     };
   }, [date, sectionId]);
 
-  const commit = () => {
-    const id = editingRef.current;
-    const el = editorRef.current;
-    if (!id || !el) return;
-    const v = el.value;
-    if (v !== (valuesRef.current[id] ?? "")) {
-      valuesRef.current = { ...valuesRef.current, [id]: v };
-      setValues(valuesRef.current);
-      markPending();
-      flush();
-    }
-  };
-
   useImperativeHandle(ref, () => ({
     editAt(x, y) {
       const c = cells.find(
@@ -152,19 +139,22 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
         ref={editorRef}
         className={editingId ? "cell-editor on" : "cell-editor"}
         enterKeyHint="done"
+        onChange={(e) => {
+          // Se guarda mientras escribes (debounce), no hace falta "Done".
+          const id = editingRef.current;
+          if (!id) return;
+          valuesRef.current = { ...valuesRef.current, [id]: e.target.value };
+          markPending();
+          flush();
+        }}
         onBlur={() => {
-          commit();
+          setValues({ ...valuesRef.current });
           setEditingId(null);
         }}
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (e.key === "Enter") editorRef.current?.blur();
-          if (e.key === "Escape") {
-            const el = editorRef.current;
-            if (el) el.value = valuesRef.current[editingRef.current ?? ""] ?? "";
-            el?.blur();
-          }
+          if (e.key === "Enter" || e.key === "Escape") editorRef.current?.blur();
         }}
       />
     </>
