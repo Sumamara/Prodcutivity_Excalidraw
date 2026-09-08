@@ -113,6 +113,20 @@ export function Toolbar({
     applyPenMode,
   ]);
 
+  // Excalidraw enciende `penMode` él solo la primera vez que detecta el Apple
+  // Pencil (pointerType "pen" → { penMode: true, penDetected: true }). Eso
+  // desincroniza el botón "Modo lápiz" (que sigue en OFF) y, con el lápiz
+  // activo, bloquea el zoom de 2 dedos (`x = 1`). Si el usuario NO ha pedido
+  // modo lápiz, lo revertimos en cuanto Excalidraw lo active solo.
+  useEffect(() => {
+    if (!api) return;
+    return api.onChange((_els, appState) => {
+      if (!cfgRef.current.penMode && appState.penMode) {
+        api.updateScene({ appState: { penMode: false } });
+      }
+    });
+  }, [api]);
+
   const selectPencil = (p: Pencil) => {
     onCellMode(false);
     // Los ajustes solo se abren si este lápiz ya está dibujando (freedraw) Y el
