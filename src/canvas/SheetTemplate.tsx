@@ -53,19 +53,26 @@ const TABLE_L = 30;
 const TABLE_R = 970;
 const BOTTOM = TABLE_T + HROW + BROW * BODY_ROWS; // 705
 
-/** Bordes verticales: 8 columnas estrechas + hueco de la casilla. */
-const V_BORDERS = [70, 110, 140, 170, 200, 230, 260, 290, 324];
+/**
+ * Bordes verticales: 8 columnas estrechas + hueco de la casilla.
+ * Esp/Real/Ti/Tf van todas a 40; energía/Ag/Ac/Ev a 30; el ancho extra de
+ * Ti/Tf (antes 30) sale de "Objetivo". El total de la hoja no cambia.
+ */
+const V_BORDERS = [70, 110, 150, 190, 220, 250, 280, 310, 344];
+
+/** Borde izquierdo de la columna ancha "Objetivo / Comentario". */
+const OBJ_L = V_BORDERS[8]; // 344
 
 /** Cabeceras de las columnas estrechas (texto, centro x). "" = icono. */
 const HEAD_COLS: Array<[string, number]> = [
   ["Esp", 50],
   ["Real", 90],
-  ["Ti", 125],
-  ["Tf", 155],
-  ["", 185],
-  ["Ag", 215],
-  ["Ac", 245],
-  ["Ev", 275],
+  ["Ti", 130],
+  ["Tf", 170],
+  ["", 205],
+  ["Ag", 235],
+  ["Ac", 265],
+  ["Ev", 295],
 ];
 
 const PRIORITY_Y = [92, 118, 144];
@@ -92,7 +99,7 @@ const NARROW_COLS: {
   { id: "ev", title: "Ev · evitación", body: "¿La estabas usando para evitar otra cosa? De 1 a 10." },
 ];
 
-const COL_LEFT = [TABLE_L, ...V_BORDERS.slice(0, 7)]; // 30, 70, 110, 140, 170, 200, 230, 260
+const COL_LEFT = [TABLE_L, ...V_BORDERS.slice(0, 7)]; // 30, 70, 110, 150, 190, 220, 250, 280
 
 export const HOTSPOTS: Hotspot[] = [
   {
@@ -122,9 +129,9 @@ export const HOTSPOTS: Hotspot[] = [
   })),
   {
     id: "obj",
-    x: 324,
+    x: OBJ_L,
     y: TABLE_T,
-    w: TABLE_R - 324,
+    w: TABLE_R - OBJ_L,
     h: HROW,
     title: "Objetivo / Comentario",
     body: "El objetivo de la fila y, al terminar, una nota breve: qué pasó y qué ajustarías.",
@@ -153,7 +160,7 @@ export const CELLS: Cell[] = (() => {
       w: V_BORDERS[i] - COL_LEFT[i],
       kind: "num" as const,
     })),
-    { key: "obj", x: 324, w: TABLE_R - 324, kind: "text" as const },
+    { key: "obj", x: OBJ_L, w: TABLE_R - OBJ_L, kind: "text" as const },
   ];
   const out: Cell[] = [];
   for (let row = 0; row < BODY_ROWS; row++) {
@@ -263,13 +270,13 @@ export function SheetTemplate() {
           </text>
         ) : null,
       )}
-      {/* rayo (columna de energía) */}
+      {/* rayo (columna de energía, centro x = 205) */}
       <path
-        d={`M188,${TABLE_T + 5} L180,${TABLE_T + 15} L185,${TABLE_T + 15} L183,${TABLE_T + 23} L192,${TABLE_T + 12} L186,${TABLE_T + 12} Z`}
+        d={`M208,${TABLE_T + 5} L200,${TABLE_T + 15} L205,${TABLE_T + 15} L203,${TABLE_T + 23} L212,${TABLE_T + 12} L206,${TABLE_T + 12} Z`}
         fill={BOLT}
       />
       <text
-        x={647}
+        x={(OBJ_L + TABLE_R) / 2}
         y={TABLE_T + 17}
         fontSize={11}
         letterSpacing={0.5}
@@ -326,7 +333,7 @@ export function SheetTemplate() {
               stroke={LINE}
               strokeWidth={0.75}
             />
-            <Box x={298} y={cy - 5.5} />
+            <Box x={(V_BORDERS[7] + V_BORDERS[8]) / 2 - 5.5} y={cy - 5.5} />
           </g>
         );
       })}

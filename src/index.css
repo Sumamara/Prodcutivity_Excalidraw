@@ -89,9 +89,24 @@ body {
   outline-offset: -2px;
 }
 
+/* Cluster derecho de la cabecera: plantilla + fecha + guardado, como un bloque
+   que se empuja entero a la derecha (una sola caja con margin-left:auto para que
+   no se "reparta" el espacio libre entre varios elementos). */
+.app-tabs-right {
+  margin-left: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Dentro del cluster, la fecha ya no necesita empujarse ella sola. */
+.app-tabs-right .date-bar,
+.app-tabs-right .date-static {
+  margin-left: 0;
+}
+
 /* Sección sin fecha (Descansos activos): en vez del selector de fecha. */
 .date-static {
-  margin-left: auto;
   margin-bottom: 6px;
   padding: 6px 9px;
   font: 500 10.5px/1 "Jost", system-ui, sans-serif;
@@ -103,38 +118,45 @@ body {
 }
 
 /* ---- modo plantilla: rótulo + botón "P", pegado a la fecha (Time blocking) ---- */
-.tpl-wrap {
-  margin-left: auto; /* empuja rótulo + P + fecha a la derecha */
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
+/* Rótulo tipo "chip" que deja claro que el modo plantilla está activo. */
 .tpl-note {
-  max-width: 150px;
-  text-align: right;
-  font: 500 10.5px/1.3 "Jost", system-ui, sans-serif;
-  color: #8b93a1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-bottom: 4px;
+  padding: 5px 9px;
+  border: 1px solid #1e2a3a;
+  border-radius: 6px;
+  background: #1e2a3a;
+  color: #c7cdd6;
+  font: 500 10.5px/1 "Jost", system-ui, sans-serif;
+  white-space: nowrap;
 }
 
 .tpl-note b {
   font-weight: 600;
-  color: #1e2a3a;
-  white-space: nowrap;
+  color: #ffffff;
+  letter-spacing: 0.02em;
 }
 
 .tpl-btn {
   flex: none;
+  box-sizing: border-box;
   width: 28px;
   height: 28px;
-  display: grid;
-  place-items: center;
+  margin-bottom: 4px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  appearance: none;
+  -webkit-appearance: none;
   border: 1px solid #d5d9df;
   border-radius: 6px;
   background: #e0e3e8;
   color: #5b6472;
-  font: 600 12px/1 "Jost", system-ui, sans-serif;
+  font: 600 13px/1 "Jost", system-ui, sans-serif;
+  text-align: center;
   cursor: pointer;
   transition:
     background 0.12s ease,
@@ -157,7 +179,8 @@ body {
   outline-offset: 1px;
 }
 
-/* Aviso visual de que lo que dibujas va a la plantilla, no al día. */
+/* Marco de aviso: mientras el modo plantilla está activo, la hoja lleva un
+   borde interior marcado para que se entienda que lo que dibujas es plantilla. */
 .page-frame[data-template-mode] {
   box-shadow:
     0 0 0 2px #1e2a3a inset,

@@ -154,37 +154,42 @@ export function App() {
             {s.label}
           </button>
         ))}
-        {active.supportsTemplate && (
-          <div className="tpl-wrap">
-            {templateMode && templateFrom && (
-              <span className="tpl-note">
-                se copia en cada día a partir del{" "}
-                <b>{formatShort(templateFrom)}</b>
-              </span>
-            )}
-            <button
-              type="button"
-              className="tpl-btn"
-              aria-pressed={templateMode}
-              title={
-                templateMode ? "Salir del modo plantilla" : "Modo plantilla"
-              }
-              aria-label="Modo plantilla"
-              onClick={toggleTemplate}
-            >
-              P
-            </button>
-          </div>
-        )}
+        <div className="app-tabs-right">
+          {active.supportsTemplate && (
+            <>
+              {templateMode && templateFrom && (
+                <span className="tpl-note">
+                  <b>Modo plantilla</b>
+                  <span>· se copia desde el {formatShort(templateFrom)}</span>
+                </span>
+              )}
+              <button
+                type="button"
+                className="tpl-btn"
+                aria-pressed={templateMode}
+                title={
+                  templateMode ? "Salir del modo plantilla" : "Modo plantilla"
+                }
+                aria-label="Modo plantilla"
+                onClick={toggleTemplate}
+              >
+                P
+              </button>
+            </>
+          )}
 
-        {active.dateScoped ? (
-          <DateBar date={date} onChange={setDate} />
-        ) : (
-          <span className="date-static" title="Esta hoja es fija, no cambia con el día">
-            Sin fecha · referencia
-          </span>
-        )}
-        <SaveIndicator />
+          {active.dateScoped ? (
+            <DateBar date={date} onChange={setDate} />
+          ) : (
+            <span
+              className="date-static"
+              title="Esta hoja es fija, no cambia con el día"
+            >
+              Sin fecha · referencia
+            </span>
+          )}
+          <SaveIndicator />
+        </div>
       </header>
 
       <div className="workspace">
