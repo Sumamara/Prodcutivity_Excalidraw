@@ -76,15 +76,21 @@ export function Toolbar({
     [api],
   );
 
-  // Reaplicar herramienta y modo lápiz cuando cambia el lienzo (sección nueva).
+  // Aplica la herramienta a Excalidraw. Se ejecuta al cambiar de lienzo
+  // (sección nueva → api nuevo) y al entrar/salir del modo celdas, de modo que
+  // cambiar de pestaña NO reinicia la herramienta que estabas usando.
   useEffect(() => {
     if (!api) return;
     const c = cfgRef.current;
+    applyPenMode(c.penMode);
+    if (cellMode && hasCells) {
+      api.setActiveTool({ type: "selection" });
+      return;
+    }
     const p = c.pencils.find((x) => x.id === c.activeId);
     if (p) applyPencil(p);
     else applyKind(c.activeId as Kind);
-    applyPenMode(c.penMode);
-  }, [api, applyPencil, applyKind, applyPenMode]);
+  }, [api, cellMode, hasCells, applyPencil, applyKind, applyPenMode]);
 
   const selectPencil = (p: Pencil) => {
     onCellMode(false);
@@ -131,7 +137,9 @@ export function Toolbar({
   const activePencil = cfg.pencils.find((p) => p.id === cfg.activeId) ?? null;
 
   const isActive = (id: string) => {
-    if (cellMode) return false; // en modo celdas ningún botón normal está activo
+    // En modo celdas (y en una sección con tabla) ningún botón normal está activo;
+    // en una sección sin tabla, el modo celdas no aplica y se usa el lápiz.
+    if (cellMode && hasCells) return false;
     if (id === "hand" || id === "selection" || id === "text" || id === "eraser") {
       return cfg.activeId === id && activeToolType === id;
     }

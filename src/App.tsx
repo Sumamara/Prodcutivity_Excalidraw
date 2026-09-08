@@ -46,17 +46,17 @@ export function App() {
 
   // Al cambiar de fecha/sección los anchors son nodos nuevos (sin transform):
   // olvidamos el último transform para que el siguiente encaje sí lo aplique.
+  // La herramienta activa (lápiz, modo celdas…) NO se toca al cambiar de pestaña.
   useEffect(() => {
     lastTransform.current = "";
-    setCellMode(false);
   }, [sectionId, date]);
 
-  // En modo celdas Excalidraw va en "selección": tocar no dibuja ni crea texto,
-  // y el pinch/pan de 2 dedos funciona nativo. Al salir, cierra el editor.
+  // Al salir del modo celdas, cierra el editor. (Poner Excalidraw en "selección"
+  // cuando el modo celdas está activo lo hace la barra, que es la que aplica la
+  // herramienta.)
   useEffect(() => {
-    if (cellMode) api?.setActiveTool({ type: "selection" });
-    else cellFieldsRef.current?.close();
-  }, [cellMode, api]);
+    if (!cellMode) cellFieldsRef.current?.close();
+  }, [cellMode]);
 
   const onCellTap = useCallback((x: number, y: number) => {
     cellFieldsRef.current?.editAt(x, y);
