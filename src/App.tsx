@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Canvas, type Viewport } from "./canvas/Canvas";
-import { CellFields } from "./canvas/CellFields";
+import { CellFields, type CellFieldsHandle } from "./canvas/CellFields";
 import { SheetHotspots } from "./canvas/SheetHotspots";
 import {
   cleanupLegacyStorage,
@@ -29,10 +29,13 @@ export function App() {
 
   const [api, setApi] = useState<ExcalidrawAPI | null>(null);
   const [toolType, setToolType] = useState<string>("selection");
+  // Modo edición de celdas: un toque en la hoja abre el editor de esa celda.
+  const [cellMode, setCellMode] = useState(false);
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
   const cellsAnchorRef = useRef<HTMLDivElement>(null);
+  const cellFieldsRef = useRef<CellFieldsHandle>(null);
   const hotspotsClose = useRef<(() => void) | null>(null);
   const lastVp = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
   const lastTransform = useRef("");
@@ -45,7 +48,19 @@ export function App() {
   // olvidamos el último transform para que el siguiente encaje sí lo aplique.
   useEffect(() => {
     lastTransform.current = "";
+    setCellMode(false);
   }, [sectionId, date]);
+
+  // En modo celdas Excalidraw va en "selección": tocar no dibuja ni crea texto,
+  // y el pinch/pan de 2 dedos funciona nativo. Al salir, cierra el editor.
+  useEffect(() => {
+    if (cellMode) api?.setActiveTool({ type: "selection" });
+    else cellFieldsRef.current?.close();
+  }, [cellMode, api]);
+
+  const onCellTap = useCallback((x: number, y: number) => {
+    cellFieldsRef.current?.editAt(x, y);
+  }, []);
 
   // Anclamos hoja y zonas interactivas al viewport de Excalidraw con el mismo
   // transform, sin re-render en cada frame. Si el transform no cambió (p. ej.
@@ -119,6 +134,8 @@ export function App() {
             onViewport={handleViewport}
             onApiReady={setApi}
             onToolChange={setToolType}
+            cellMode={cellMode}
+            onCellTap={onCellTap}
           />
 
           {active.cells && active.cells.length > 0 && (
@@ -130,10 +147,12 @@ export function App() {
               >
                 <CellFields
                   key={key}
+                  ref={cellFieldsRef}
                   date={effDate}
                   sectionId={sectionId}
                   cells={active.cells}
-                  activeToolType={toolType}
+                  sheetW={active.width}
+                  sheetH={active.height}
                 />
               </div>
             </div>
@@ -153,7 +172,13 @@ export function App() {
             </div>
           </div>
 
-          <Toolbar api={api} activeToolType={toolType} />
+          <Toolbar
+            api={api}
+            activeToolType={toolType}
+            cellMode={cellMode}
+            onCellMode={setCellMode}
+            hasCells={!!active.cells?.length}
+          />
         </div>
       </div>
     </div>

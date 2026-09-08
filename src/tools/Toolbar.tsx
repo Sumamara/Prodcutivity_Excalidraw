@@ -6,12 +6,6 @@ import "./Toolbar.css";
 
 type Kind = "hand" | "selection" | "text" | "eraser";
 
-// Arriba: Texto y Mover. "Seleccionar" y "Borrador" van junto a los lápices.
-const KINDS: { id: Kind; label: string }[] = [
-  { id: "text", label: "Texto" },
-  { id: "hand", label: "Mover" },
-];
-
 const SWATCHES = [
   "#1e2a3a",
   "#000000",
@@ -31,9 +25,16 @@ const SWATCHES = [
 export function Toolbar({
   api,
   activeToolType,
+  cellMode,
+  onCellMode,
+  hasCells,
 }: {
   api: ExcalidrawAPI | null;
   activeToolType: string;
+  /** Modo edición de celdas (solo en secciones con tabla). */
+  cellMode: boolean;
+  onCellMode: (on: boolean) => void;
+  hasCells: boolean;
 }) {
   const [cfg, setCfg] = useState<ToolConfig>(() => loadTools());
   const [panelOpen, setPanelOpen] = useState(false);
@@ -86,6 +87,7 @@ export function Toolbar({
   }, [api, applyPencil, applyKind, applyPenMode]);
 
   const selectPencil = (p: Pencil) => {
+    onCellMode(false);
     if (cfg.activeId === p.id) {
       setPanelOpen((o) => !o);
       return;
@@ -98,6 +100,7 @@ export function Toolbar({
   };
 
   const selectKind = (k: Kind) => {
+    onCellMode(false);
     const next = { ...cfg, activeId: k };
     setCfg(next);
     saveTools(next);
@@ -128,6 +131,7 @@ export function Toolbar({
   const activePencil = cfg.pencils.find((p) => p.id === cfg.activeId) ?? null;
 
   const isActive = (id: string) => {
+    if (cellMode) return false; // en modo celdas ningún botón normal está activo
     if (id === "hand" || id === "selection" || id === "text" || id === "eraser") {
       return cfg.activeId === id && activeToolType === id;
     }
@@ -163,19 +167,30 @@ export function Toolbar({
 
       <span className="tb-sep" />
 
-      {KINDS.map((k) => (
+      {hasCells && (
         <button
-          key={k.id}
           type="button"
           className="tb-btn"
-          data-active={isActive(k.id)}
-          title={k.label}
-          aria-label={k.label}
-          onClick={() => selectKind(k.id)}
+          data-active={cellMode}
+          aria-pressed={cellMode}
+          title="Escribir en celdas · toca una celda para editarla"
+          aria-label="Escribir en celdas"
+          onClick={() => onCellMode(!cellMode)}
         >
-          <KindIcon kind={k.id} />
+          <KindIcon kind="text" />
         </button>
-      ))}
+      )}
+
+      <button
+        type="button"
+        className="tb-btn"
+        data-active={isActive("hand")}
+        title="Mover"
+        aria-label="Mover"
+        onClick={() => selectKind("hand")}
+      >
+        <KindIcon kind="hand" />
+      </button>
 
       <span className="tb-sep" />
 

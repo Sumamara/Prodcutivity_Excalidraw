@@ -1,42 +1,50 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { markError, markPending, markSaved } from "../saveStatus";
 import { debounce, loadCells, saveCells } from "./persistence";
 import type { Cell } from "./SheetTemplate";
 import "./CellFields.css";
 
-/**
- * Campos de escritura digital, uno por celda de la tabla. Van dentro de un
- * anchor que App transforma igual que la hoja, así quedan alineados a cualquier
- * zoom.
- *
- * Solo se pueden editar (teclado, tocar, y a mano con el Pencil vía Scribble de
- * iPadOS) con la herramienta **Texto (T)** activa. Con cualquier otra —lápiz,
- * borrador, seleccionar, mover— la capa deja pasar el puntero: mover tiene
- * prioridad aunque arrastres sobre una celda. El texto ya escrito se ve siempre.
- *
- * Inputs no controlados: el valor vive en un ref y se guarda con debounce, así
- * teclear no re-renderiza los campos. Se monta con key={fecha:sección} desde
- * App, por eso basta cargar una vez.
- */
-export function CellFields({
-  date,
-  sectionId,
-  cells,
-  activeToolType,
-}: {
+export interface CellFieldsHandle {
+  /** Abre el editor sobre la celda que contiene el punto (coords de la hoja). */
+  editAt(x: number, y: number): void;
+  /** Cierra el editor si está abierto (confirma el valor). */
+  close(): void;
+}
+
+interface Props {
   date: string;
   sectionId: string;
   cells: Cell[];
-  activeToolType: string;
-}) {
-  const [initial, setInitial] = useState<Record<string, string> | null>(null);
-  const valuesRef = useRef<Record<string, string>>({});
-  const layerRef = useRef<HTMLDivElement>(null);
+  sheetW: number;
+  sheetH: number;
+}
 
-  // Solo la herramienta Texto activa las celdas. Cualquier otra las deja pasar
-  // (mover, seleccionar, lápices, borrador todos priorizan el lienzo).
-  const interactive = activeToolType === "text";
+/**
+ * Estilo hoja de cálculo: los valores de las celdas se pintan como texto SVG
+ * (una sola capa ligera, sin captura de puntero, se mueve/zoom perfecto con la
+ * hoja). Solo existe UN `<input>` real, que se coloca y enfoca sobre la celda
+ * tocada cuando la barra está en "modo celdas". Al salir, el valor vuelve a ser
+ * texto SVG. Así el zoom con 2 dedos no se traba.
+ */
+export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellFields(
+  { date, sectionId, cells, sheetW, sheetH },
+  ref,
+) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const valuesRef = useRef<Record<string, string>>({});
+  const editorRef = useRef<HTMLInputElement>(null);
+  const editingRef = useRef<string | null>(null);
+  editingRef.current = editingId;
 
   const flush = useMemo(
     () =>
@@ -53,57 +61,105 @@ export function CellFields({
     loadCells(date, sectionId).then((v) => {
       if (!alive) return;
       valuesRef.current = v;
-      setInitial(v);
+      setValues(v);
+      setLoaded(true);
     });
     return () => {
       alive = false;
     };
   }, [date, sectionId]);
 
-  // Al cambiar a modo dibujo, saca el foco de cualquier campo (cierra el
-  // teclado en pantalla y evita seguir escribiendo sin querer).
-  useEffect(() => {
-    if (interactive) return;
-    const el = document.activeElement;
-    if (el instanceof HTMLElement && layerRef.current?.contains(el)) el.blur();
-  }, [interactive]);
-
-  // Guardado inmediato al desmontar (cambio de fecha/sección).
   useEffect(() => {
     return () => void saveCells(date, sectionId, valuesRef.current);
   }, [date, sectionId]);
 
-  if (!initial) return null;
+  const commit = () => {
+    const id = editingRef.current;
+    const el = editorRef.current;
+    if (!id || !el) return;
+    const v = el.value;
+    if (v !== (valuesRef.current[id] ?? "")) {
+      valuesRef.current = { ...valuesRef.current, [id]: v };
+      setValues(valuesRef.current);
+      markPending();
+      flush();
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    editAt(x, y) {
+      const c = cells.find(
+        (cell) =>
+          x >= cell.x &&
+          x < cell.x + cell.w &&
+          y >= cell.y &&
+          y < cell.y + cell.h,
+      );
+      const el = editorRef.current;
+      if (!c || !el) return;
+      el.value = valuesRef.current[c.id] ?? "";
+      el.style.left = `${c.x}px`;
+      el.style.top = `${c.y}px`;
+      el.style.width = `${c.w}px`;
+      el.style.height = `${c.h}px`;
+      el.classList.toggle("cell-num", c.kind === "num");
+      el.classList.toggle("cell-text", c.kind === "text");
+      setEditingId(c.id);
+      // Enfocar en el mismo tick del gesto (iOS lo necesita para el teclado).
+      el.focus({ preventScroll: true });
+      el.select();
+    },
+    close() {
+      editorRef.current?.blur();
+    },
+  }));
+
+  if (!loaded) return null;
 
   return (
-    <div
-      ref={layerRef}
-      className={interactive ? "cell-fields on" : "cell-fields off"}
-    >
-      {cells.map((c) => (
-        <input
-          key={c.id}
-          className={c.kind === "num" ? "cell-input cell-num" : "cell-input cell-text"}
-          style={{ left: c.x, top: c.y, width: c.w, height: c.h }}
-          defaultValue={initial[c.id] ?? ""}
-          inputMode={c.kind === "num" ? "decimal" : "text"}
-          enterKeyHint="next"
-          tabIndex={interactive ? 0 : -1}
-          aria-hidden={!interactive}
-          onInput={(e) => {
-            valuesRef.current[c.id] = (e.target as HTMLInputElement).value;
-            markPending();
-            flush();
-          }}
-          onBlur={() =>
-            void saveCells(date, sectionId, valuesRef.current).then((ok) =>
-              ok ? markSaved() : markError(),
-            )
+    <>
+      <svg
+        className="cell-values"
+        viewBox={`0 0 ${sheetW} ${sheetH}`}
+        aria-hidden="true"
+      >
+        {cells.map((c) => {
+          const v = values[c.id];
+          if (!v || c.id === editingId) return null;
+          return (
+            <text
+              key={c.id}
+              x={c.kind === "num" ? c.x + c.w / 2 : c.x + 5}
+              y={c.y + c.h * 0.68}
+              fontSize={12}
+              fill="#1e2a3a"
+              textAnchor={c.kind === "num" ? "middle" : "start"}
+            >
+              {v}
+            </text>
+          );
+        })}
+      </svg>
+
+      <input
+        ref={editorRef}
+        className={editingId ? "cell-editor on" : "cell-editor"}
+        enterKeyHint="done"
+        onBlur={() => {
+          commit();
+          setEditingId(null);
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") editorRef.current?.blur();
+          if (e.key === "Escape") {
+            const el = editorRef.current;
+            if (el) el.value = valuesRef.current[editingRef.current ?? ""] ?? "";
+            el?.blur();
           }
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        />
-      ))}
-    </div>
+        }}
+      />
+    </>
   );
-}
+});

@@ -1,39 +1,39 @@
-.cell-fields {
+.cell-values {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  font-family: "Jost", system-ui, sans-serif;
 }
 
-.cell-input {
+/* Único editor: se coloca (inline style) y se muestra sobre la celda activa. */
+.cell-editor {
   position: absolute;
+  left: -9999px;
+  top: 0;
   margin: 0;
   border: 0;
-  padding: 0 2px;
-  background: transparent;
+  padding: 0 4px;
+  background: #ffffff;
   color: #1e2a3a;
   font: 400 13px/1 "Jost", system-ui, sans-serif;
-  outline: none;
-  /* Por defecto no captura el puntero: escribir a mano por encima manda. */
+  border-radius: 2px;
+  outline: 2px solid #f2b705;
+  outline-offset: -1px;
+  opacity: 0;
   pointer-events: none;
 }
 
-.cell-fields.on .cell-input {
+.cell-editor.on {
+  opacity: 1;
   pointer-events: auto;
 }
 
-.cell-input::placeholder {
-  color: transparent;
-}
-
-.cell-input:focus {
-  background: rgba(242, 183, 5, 0.16);
-  border-radius: 2px;
-}
-
-.cell-num {
+.cell-editor.cell-num {
   text-align: center;
 }
 
-.cell-text {
+.cell-editor.cell-text {
   text-align: left;
-  padding-left: 6px;
 }

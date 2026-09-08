@@ -47,6 +47,10 @@ interface CanvasProps {
   onApiReady?: (api: ExcalidrawAPI) => void;
   /** Avisa cuando Excalidraw cambia de herramienta activa. */
   onToolChange?: (toolType: string) => void;
+  /** Modo edición de celdas: un toque abre el editor de la celda tocada. */
+  cellMode?: boolean;
+  /** Toque (no arrastre) en el lienzo estando en cellMode; coords de escena. */
+  onCellTap?: (x: number, y: number) => void;
 }
 
 type SceneSnapshot = {
@@ -69,12 +73,16 @@ export function Canvas({
   onViewport,
   onApiReady,
   onToolChange,
+  cellMode,
+  onCellTap,
 }: CanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExcalidrawAPI | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastViewport = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
   const lastTool = useRef<string>("");
+  const cellModeRef = useRef(false);
+  cellModeRef.current = !!cellMode;
   const latestScene = useRef<SceneSnapshot | null>(null);
   const lastEls = useRef<SceneElements | null>(null);
   const lastFiles = useRef<SceneFiles | null>(null);
@@ -227,6 +235,13 @@ export function Canvas({
         excalidrawAPI={onApi}
         initialData={initialData}
         onChange={handleChange}
+        onPointerUp={(_tool, st) => {
+          if (!cellModeRef.current) return;
+          // Solo un toque (sin arrastre) abre el editor de la celda.
+          const dx = Math.abs(st.lastCoords.x - st.origin.x);
+          const dy = Math.abs(st.lastCoords.y - st.origin.y);
+          if (dx < 6 && dy < 6) onCellTap?.(st.origin.x, st.origin.y);
+        }}
         UIOptions={{
           canvasActions: {
             toggleTheme: false,
