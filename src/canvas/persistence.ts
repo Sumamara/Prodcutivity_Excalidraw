@@ -1,6 +1,13 @@
 import { serializeAsJSON } from "@excalidraw/excalidraw";
 
-import { getCells, getSceneJSON, putCells, putSceneJSON } from "./db";
+import {
+  getCells,
+  getSceneJSON,
+  getTemplate,
+  putCells,
+  putSceneJSON,
+  putTemplate,
+} from "./db";
 import type { SceneAppState, SceneElements, SceneFiles } from "./types";
 
 const ACTIVE_KEY = "journal-horas:active-section";
@@ -55,6 +62,97 @@ export async function loadScene(
     console.warn("[persistence] no se pudo leer la escena guardada", err);
     return null;
   }
+}
+
+/* ------------------------------- Plantillas ------------------------------- */
+
+/**
+ * Carga la plantilla de una sección (escena + fecha desde la que aplica).
+ * `null` si esa sección aún no tiene plantilla.
+ */
+export async function loadTemplate(
+  section: string,
+): Promise<{ appliesFrom: string; scene: RestoredScene } | null> {
+  const row = await getTemplate(section);
+  if (!row) return null;
+  try {
+    const parsed = JSON.parse(row.json) as {
+      elements?: SceneElements;
+      appState?: Partial<SceneAppState>;
+      files?: SceneFiles;
+    };
+    return {
+      appliesFrom: row.appliesFrom,
+      scene: {
+        elements: parsed.elements ?? [],
+        appState: { ...parsed.appState, collaborators: undefined },
+        files: parsed.files ?? {},
+      },
+    };
+  } catch (err) {
+    console.warn("[persistence] no se pudo leer la plantilla", err);
+    return null;
+  }
+}
+
+export async function saveTemplate(
+  section: string,
+  appliesFrom: string,
+  elements: SceneElements,
+  appState: SceneAppState,
+  files: SceneFiles,
+): Promise<boolean> {
+  try {
+    const json = serializeAsJSON(elements, appState, files, "local");
+    return await putTemplate(section, appliesFrom, json);
+  } catch (err) {
+    console.warn("[persistence] no se pudo guardar la plantilla", err);
+    return false;
+  }
+}
+
+/**
+ * Copia profunda de elementos de escena con ids nuevos, pensada para sembrar un
+ * día a partir de la plantilla: los trazos quedan independientes (borrar/editar
+ * en ese día no toca la plantilla). Se limpian vínculos (bindings/contenedores)
+ * por seguridad; para tinta y texto sueltos —el contenido típico— basta.
+ */
+export function cloneElements(els: SceneElements): SceneElements {
+  const idMap = new Map<string, string>();
+  const fresh = (old: string): string => {
+    let n = idMap.get(old);
+    if (!n) {
+      n =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      idMap.set(old, n);
+    }
+    return n;
+  };
+  const rnd = () => Math.floor(Math.random() * 2 ** 31);
+
+  return els.map((e) => {
+    const src = e as Record<string, unknown>;
+    const out: Record<string, unknown> = {
+      ...src,
+      id: fresh(e.id),
+      groupIds: Array.isArray(src.groupIds)
+        ? (src.groupIds as string[]).map(fresh)
+        : [],
+      boundElements: null,
+      frameId: null,
+      seed: rnd(),
+      versionNonce: rnd(),
+      version: (typeof src.version === "number" ? src.version : 1) + 1,
+      updated: Date.now(),
+      isDeleted: false,
+    };
+    if ("containerId" in src) out.containerId = null;
+    if ("startBinding" in src) out.startBinding = null;
+    if ("endBinding" in src) out.endBinding = null;
+    return out;
+  }) as unknown as SceneElements;
 }
 
 /** Texto de los campos de celda por (fecha, sección): { "<col>-<fila>": valor }. */

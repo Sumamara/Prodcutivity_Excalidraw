@@ -102,6 +102,54 @@ body {
   border-radius: 6px;
 }
 
+/* ---- modo plantilla (icono "P" junto a la fecha, solo Time blocking) ---- */
+.tpl-btn {
+  margin-left: auto; /* empuja este bloque y la fecha a la derecha */
+  margin-bottom: 4px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cbc4ea;
+  border-radius: 6px;
+  background: #efecfb;
+  color: #6c5ce7;
+  font: 600 13px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.tpl-btn:hover {
+  color: #4b3bc4;
+}
+
+.tpl-btn[aria-pressed="true"] {
+  background: #6c5ce7;
+  border-color: #6c5ce7;
+  color: #ffffff;
+}
+
+.tpl-btn:focus-visible {
+  outline: 2px solid #6c5ce7;
+  outline-offset: 1px;
+}
+
+.tpl-banner {
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  font: 500 10.5px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #4b3bc4;
+  background: #efecfb;
+  border: 1px solid #cbc4ea;
+  border-radius: 6px;
+}
+
+/* Aviso visual de que lo que dibujas va a la plantilla, no al día. */
+.page-frame[data-template-mode] {
+  box-shadow:
+    0 0 0 2px #6c5ce7 inset,
+    0 6px 24px rgba(30, 42, 58, 0.08);
+}
+
 /* ---- espacio de trabajo (marco de la hoja) ---- */
 .workspace {
   flex: 1 1 auto;

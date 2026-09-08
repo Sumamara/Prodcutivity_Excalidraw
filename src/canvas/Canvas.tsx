@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
 import { markError, markPending, markSaved } from "../saveStatus";
-import { debounce, loadScene, saveScene } from "./persistence";
+import {
+  cloneElements,
+  debounce,
+  loadScene,
+  loadTemplate,
+  saveScene,
+  saveTemplate,
+} from "./persistence";
 import {
   FIT_PAD_LEFT,
   FIT_PAD_RIGHT,
@@ -51,6 +58,12 @@ interface CanvasProps {
   cellMode?: boolean;
   /** Toque (no arrastre) en el lienzo estando en cellMode; coords de escena. */
   onCellTap?: (x: number, y: number) => void;
+  /** La sección admite plantilla: un día sin escena se siembra con ella. */
+  supportsTemplate?: boolean;
+  /** Modo plantilla activo: se edita/guarda la escena de la plantilla. */
+  templateMode?: boolean;
+  /** Fecha desde la que aplica la plantilla (se guarda con ella). */
+  templateFrom?: string | null;
 }
 
 type SceneSnapshot = {
@@ -75,6 +88,9 @@ export function Canvas({
   onToolChange,
   cellMode,
   onCellTap,
+  supportsTemplate,
+  templateMode,
+  templateFrom,
 }: CanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExcalidrawAPI | null>(null);
@@ -93,14 +109,41 @@ export function Canvas({
   // que este useMemo corre una vez por (fecha, sección).
   const initialData = useMemo<ExcalidrawInitialData>(
     () =>
-      loadScene(date, sectionId).then((restored) => {
+      (async () => {
+        // Modo plantilla: se edita la escena de la plantilla de la sección.
+        if (templateMode) {
+          const tpl = await loadTemplate(sectionId);
+          return {
+            elements: tpl?.scene.elements ?? [],
+            appState: {
+              collaborators: undefined,
+              viewBackgroundColor: "transparent",
+              gridModeEnabled: false,
+            },
+            files: tpl?.scene.files,
+          };
+        }
+
+        const restored = await loadScene(date, sectionId);
+
+        // Día sin escena propia: si la sección tiene plantilla y su fecha ya
+        // aplica, se siembra con una COPIA (ids nuevos) de la plantilla. A
+        // partir de ahí ese día es independiente (borrar/editar no la toca).
+        let elements = restored?.elements ?? [];
+        if (!restored && supportsTemplate) {
+          const tpl = await loadTemplate(sectionId);
+          if (tpl && date >= tpl.appliesFrom && tpl.scene.elements.length) {
+            elements = cloneElements(tpl.scene.elements);
+          }
+        }
+
         const appState = { ...restored?.appState };
         // Nunca restauramos el viewport guardado: el encaje (fitSheet) manda.
         delete appState.scrollX;
         delete appState.scrollY;
         delete appState.zoom;
         return {
-          elements: restored?.elements ?? [],
+          elements,
           appState: {
             ...appState,
             collaborators: undefined,
@@ -109,18 +152,29 @@ export function Canvas({
           },
           files: restored?.files,
         };
-      }),
-    [date, sectionId],
+      })(),
+    [date, sectionId, templateMode, supportsTemplate],
   );
 
   const persist = useMemo(
     () =>
       debounce((snap: SceneSnapshot) => {
+        const done = (ok: boolean) => (ok ? markSaved() : markError());
+        if (templateMode) {
+          void saveTemplate(
+            sectionId,
+            templateFrom ?? date,
+            snap.els,
+            snap.state,
+            snap.files,
+          ).then(done);
+          return;
+        }
         void saveScene(date, sectionId, snap.els, snap.state, snap.files).then(
-          (ok) => (ok ? markSaved() : markError()),
+          done,
         );
       }, AUTOSAVE_MS),
-    [date, sectionId],
+    [date, sectionId, templateMode, templateFrom],
   );
 
   const flushViewport = useCallback(() => {
@@ -216,18 +270,27 @@ export function Canvas({
     [onApiReady, fitSheet],
   );
 
-  // Guardado inmediato al salir de la fecha/sección (por si el debounce no disparó).
+  // Guardado inmediato al salir de la fecha/sección/modo (por si el debounce no
+  // disparó).
   useEffect(() => {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       const s = latestScene.current;
-      if (s) {
-        void saveScene(date, sectionId, s.els, s.state, s.files).then((ok) =>
-          ok ? markSaved() : markError(),
-        );
+      if (!s) return;
+      const done = (ok: boolean) => (ok ? markSaved() : markError());
+      if (templateMode) {
+        void saveTemplate(
+          sectionId,
+          templateFrom ?? date,
+          s.els,
+          s.state,
+          s.files,
+        ).then(done);
+      } else {
+        void saveScene(date, sectionId, s.els, s.state, s.files).then(done);
       }
     };
-  }, [date, sectionId]);
+  }, [date, sectionId, templateMode, templateFrom]);
 
   return (
     <div className="excalidraw-wrapper" ref={wrapperRef}>

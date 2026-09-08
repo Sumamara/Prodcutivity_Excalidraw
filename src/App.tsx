@@ -6,12 +6,13 @@ import { SheetHotspots } from "./canvas/SheetHotspots";
 import {
   cleanupLegacyStorage,
   loadActiveSection,
+  loadTemplate,
   saveActiveSection,
 } from "./canvas/persistence";
 import type { ExcalidrawAPI } from "./canvas/types";
 import { DateBar } from "./DateBar";
 import { SaveIndicator } from "./SaveIndicator";
-import { todayISO } from "./dates";
+import { formatHuman, todayISO } from "./dates";
 import { Toolbar } from "./tools/Toolbar";
 import {
   DEFAULT_SECTION_ID,
@@ -33,6 +34,11 @@ export function App() {
   const [toolType, setToolType] = useState<string>("selection");
   // Modo edición de celdas: un toque en la hoja abre el editor de esa celda.
   const [cellMode, setCellMode] = useState(false);
+  // Modo plantilla (secciones con `supportsTemplate`): se edita la plantilla,
+  // que luego se copia como semilla en cada día nuevo desde `templateFrom`.
+  const [templateMode, setTemplateMode] = useState(false);
+  const [templateFrom, setTemplateFrom] = useState<string | null>(null);
+  const prevTemplateMode = useRef(false);
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
@@ -46,12 +52,49 @@ export function App() {
     cleanupLegacyStorage();
   }, []);
 
-  // Al cambiar de fecha/sección los anchors son nodos nuevos (sin transform):
-  // olvidamos el último transform para que el siguiente encaje sí lo aplique.
-  // La herramienta activa (lápiz, modo celdas…) NO se toca al cambiar de pestaña.
+  // Al cambiar de fecha/sección/modo los anchors son nodos nuevos (sin
+  // transform): olvidamos el último transform para que el siguiente encaje sí lo
+  // aplique. La herramienta activa (lápiz, modo celdas…) NO se toca.
   useEffect(() => {
     lastTransform.current = "";
-  }, [sectionId, date]);
+  }, [sectionId, date, templateMode]);
+
+  // Carga la fecha "aplica desde" de la plantilla de la sección (si la admite).
+  // Al cambiar de sección se sale del modo plantilla.
+  useEffect(() => {
+    setTemplateMode(false);
+    if (!active.supportsTemplate) {
+      setTemplateFrom(null);
+      return;
+    }
+    let alive = true;
+    void loadTemplate(sectionId).then((t) => {
+      if (alive) setTemplateFrom(t?.appliesFrom ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [sectionId, active.supportsTemplate]);
+
+  // Al SALIR del modo plantilla, relee la fecha por si la plantilla se acaba de
+  // crear (o de vaciar) en esta sesión.
+  useEffect(() => {
+    if (prevTemplateMode.current && !templateMode && active.supportsTemplate) {
+      void loadTemplate(sectionId).then((t) =>
+        setTemplateFrom(t?.appliesFrom ?? null),
+      );
+    }
+    prevTemplateMode.current = templateMode;
+  }, [templateMode, sectionId, active.supportsTemplate]);
+
+  const toggleTemplate = useCallback(() => {
+    setTemplateMode((on) => {
+      const next = !on;
+      // Al entrar sin plantilla previa: aplica desde el día que estás viendo.
+      if (next) setTemplateFrom((f) => f ?? date);
+      return next;
+    });
+  }, [date]);
 
   // Al salir del modo celdas, cierra el editor. (Poner Excalidraw en "selección"
   // cuando el modo celdas está activo lo hace la barra, que es la que aplica la
@@ -93,6 +136,8 @@ export function App() {
   // Descansos activos no cambia con el día: se guarda bajo una clave fija.
   const effDate = active.dateScoped ? date : "global";
   const key = `${effDate}:${sectionId}`;
+  // El lienzo se remonta al entrar/salir del modo plantilla (escena distinta).
+  const canvasKey = templateMode ? `tpl:${sectionId}` : key;
 
   return (
     <div className="app-shell">
@@ -109,7 +154,29 @@ export function App() {
             {s.label}
           </button>
         ))}
-        {active.dateScoped ? (
+        {active.supportsTemplate && (
+          <button
+            type="button"
+            className="tpl-btn"
+            aria-pressed={templateMode}
+            title={
+              templateMode
+                ? "Salir del modo plantilla"
+                : "Modo plantilla — lo que dibujes se copia en cada día nuevo"
+            }
+            aria-label="Modo plantilla"
+            onClick={toggleTemplate}
+          >
+            P
+          </button>
+        )}
+
+        {templateMode ? (
+          <span className="tpl-banner">
+            Modo plantilla · se copia en cada día nuevo
+            {templateFrom ? ` desde ${formatHuman(templateFrom)}` : ""}
+          </span>
+        ) : active.dateScoped ? (
           <DateBar date={date} onChange={setDate} />
         ) : (
           <span className="date-static" title="Esta hoja es fija, no cambia con el día">
@@ -120,7 +187,7 @@ export function App() {
       </header>
 
       <div className="workspace">
-        <div className="page-frame">
+        <div className="page-frame" data-template-mode={templateMode || undefined}>
           <div className="sheet-layer">
             <div className="sheet-anchor" ref={anchorRef} style={sheetStyle}>
               <Template />
@@ -128,7 +195,7 @@ export function App() {
           </div>
 
           <Canvas
-            key={key}
+            key={canvasKey}
             date={effDate}
             sectionId={sectionId}
             sheetW={active.width}
@@ -138,6 +205,9 @@ export function App() {
             onToolChange={setToolType}
             cellMode={cellMode}
             onCellTap={onCellTap}
+            supportsTemplate={active.supportsTemplate}
+            templateMode={templateMode}
+            templateFrom={templateFrom}
           />
 
           {active.cells && active.cells.length > 0 && (

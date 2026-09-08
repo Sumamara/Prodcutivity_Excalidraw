@@ -37,6 +37,12 @@ export interface Section {
   hotspots: Hotspot[];
   /** Celdas con campo de escritura digital (opcional). */
   cells?: Cell[];
+  /**
+   * `true`: la sección admite "modo plantilla" (icono P junto a la fecha). La
+   * plantilla se copia como semilla en cada día nuevo (sin escena) cuya fecha
+   * sea >= la fecha desde la que aplica.
+   */
+  supportsTemplate?: boolean;
 }
 
 export const SECTIONS: Section[] = [
@@ -58,6 +64,7 @@ export const SECTIONS: Section[] = [
     height: TIME_BLOCKING_SIZE.h,
     dateScoped: true,
     hotspots: TIME_BLOCKING_HOTSPOTS,
+    supportsTemplate: true,
   },
   {
     id: "menu-dia",
