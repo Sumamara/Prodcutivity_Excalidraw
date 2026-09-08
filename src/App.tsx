@@ -28,6 +28,8 @@ export function App() {
   const active = resolveSection(sectionId);
 
   const [api, setApi] = useState<ExcalidrawAPI | null>(null);
+  // Excalidraw arranca en "selection"; el efecto de la barra lo lleva a la
+  // herramienta base ("hand") en cuanto detecta la discrepancia.
   const [toolType, setToolType] = useState<string>("selection");
   // Modo edición de celdas: un toque en la hoja abre el editor de esa celda.
   const [cellMode, setCellMode] = useState(false);

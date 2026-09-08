@@ -30,26 +30,26 @@ export const DEFAULT_PENCILS: Pencil[] = [
 ];
 
 export function loadTools(): ToolConfig {
+  // La app SIEMPRE abre en "mover" (hand). El `activeId` guardado no se
+  // restaura al arrancar; sí se conservan lápices (color/grosor) y modo lápiz.
+  const base: ToolConfig = {
+    pencils: DEFAULT_PENCILS.map((p) => ({ ...p })),
+    activeId: "hand",
+    penMode: false,
+  };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<ToolConfig>;
       if (Array.isArray(parsed.pencils) && parsed.pencils.length === 4) {
-        return {
-          pencils: parsed.pencils as Pencil[],
-          activeId: parsed.activeId ?? "p1",
-          penMode: parsed.penMode ?? false,
-        };
+        base.pencils = parsed.pencils as Pencil[];
+        base.penMode = parsed.penMode ?? false;
       }
     }
   } catch {
     /* noop */
   }
-  return {
-    pencils: DEFAULT_PENCILS.map((p) => ({ ...p })),
-    activeId: "p1",
-    penMode: false,
-  };
+  return base;
 }
 
 export function saveTools(cfg: ToolConfig): void {
