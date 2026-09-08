@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -59,6 +60,21 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
     [date, sectionId],
   );
 
+  // Lee el valor actual del <input> y lo guarda (debounce). En iPad, Scribble y
+  // el teclado con predicción a veces NO disparan `change` mientras escribes;
+  // por eso se llama también en `input`, `compositionend`, un sondeo periódico
+  // y al salir del campo.
+  const syncEditor = useCallback((): boolean => {
+    const id = editingRef.current;
+    const el = editorRef.current;
+    if (!id || !el) return false;
+    if (el.value === (valuesRef.current[id] ?? "")) return false;
+    valuesRef.current = { ...valuesRef.current, [id]: el.value };
+    markPending();
+    flush();
+    return true;
+  }, [flush]);
+
   useEffect(() => {
     let alive = true;
     loadedRef.current = false;
@@ -79,6 +95,14 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
       if (loadedRef.current) void saveCells(date, sectionId, valuesRef.current);
     };
   }, [date, sectionId]);
+
+  // Mientras el editor está abierto, sondea el valor por si el método de
+  // entrada (Scribble, teclado iPad) no dispara eventos al escribir.
+  useEffect(() => {
+    if (!editingId) return;
+    const t = window.setInterval(syncEditor, 600);
+    return () => window.clearInterval(t);
+  }, [editingId, syncEditor]);
 
   useImperativeHandle(ref, () => ({
     editAt(x, y) {
@@ -139,15 +163,17 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
         ref={editorRef}
         className={editingId ? "cell-editor on" : "cell-editor"}
         enterKeyHint="done"
-        onChange={(e) => {
-          // Se guarda mientras escribes (debounce), no hace falta "Done".
-          const id = editingRef.current;
-          if (!id) return;
-          valuesRef.current = { ...valuesRef.current, [id]: e.target.value };
-          markPending();
-          flush();
-        }}
+        onChange={syncEditor}
+        onInput={syncEditor}
+        onCompositionEnd={syncEditor}
         onBlur={() => {
+          syncEditor();
+          // Guardado inmediato al salir del campo (sin esperar al debounce).
+          if (loadedRef.current) {
+            void saveCells(date, sectionId, valuesRef.current).then((ok) =>
+              ok ? markSaved() : markError(),
+            );
+          }
           setValues({ ...valuesRef.current });
           setEditingId(null);
         }}
