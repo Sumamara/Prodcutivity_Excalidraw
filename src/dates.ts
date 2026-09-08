@@ -23,3 +23,12 @@ export function formatHuman(iso: string): string {
     month: "long",
   });
 }
+
+/** Fecha corta para rótulos, p. ej. "8 sept". */
+export function formatShort(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es", {
+    day: "numeric",
+    month: "short",
+  });
+}

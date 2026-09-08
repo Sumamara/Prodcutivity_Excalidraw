@@ -102,51 +102,65 @@ body {
   border-radius: 6px;
 }
 
-/* ---- modo plantilla (icono "P" junto a la fecha, solo Time blocking) ---- */
-.tpl-btn {
-  margin-left: auto; /* empuja este bloque y la fecha a la derecha */
+/* ---- modo plantilla: rótulo + botón "P", pegado a la fecha (Time blocking) ---- */
+.tpl-wrap {
+  margin-left: auto; /* empuja rótulo + P + fecha a la derecha */
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tpl-note {
+  max-width: 150px;
+  text-align: right;
+  font: 500 10.5px/1.3 "Jost", system-ui, sans-serif;
+  color: #8b93a1;
+}
+
+.tpl-note b {
+  font-weight: 600;
+  color: #1e2a3a;
+  white-space: nowrap;
+}
+
+.tpl-btn {
+  flex: none;
   width: 28px;
   height: 28px;
-  border: 1px solid #cbc4ea;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d5d9df;
   border-radius: 6px;
-  background: #efecfb;
-  color: #6c5ce7;
-  font: 600 13px/1 "Jost", system-ui, sans-serif;
+  background: #e0e3e8;
+  color: #5b6472;
+  font: 600 12px/1 "Jost", system-ui, sans-serif;
   cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .tpl-btn:hover {
-  color: #4b3bc4;
+  color: #1e2a3a;
 }
 
 .tpl-btn[aria-pressed="true"] {
-  background: #6c5ce7;
-  border-color: #6c5ce7;
+  background: #1e2a3a;
+  border-color: #1e2a3a;
   color: #ffffff;
 }
 
 .tpl-btn:focus-visible {
-  outline: 2px solid #6c5ce7;
+  outline: 2px solid #1e2a3a;
   outline-offset: 1px;
-}
-
-.tpl-banner {
-  margin-bottom: 6px;
-  padding: 6px 10px;
-  font: 500 10.5px/1 "Jost", system-ui, sans-serif;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #4b3bc4;
-  background: #efecfb;
-  border: 1px solid #cbc4ea;
-  border-radius: 6px;
 }
 
 /* Aviso visual de que lo que dibujas va a la plantilla, no al día. */
 .page-frame[data-template-mode] {
   box-shadow:
-    0 0 0 2px #6c5ce7 inset,
+    0 0 0 2px #1e2a3a inset,
     0 6px 24px rgba(30, 42, 58, 0.08);
 }
 

@@ -12,7 +12,7 @@ import {
 import type { ExcalidrawAPI } from "./canvas/types";
 import { DateBar } from "./DateBar";
 import { SaveIndicator } from "./SaveIndicator";
-import { formatHuman, todayISO } from "./dates";
+import { formatShort, todayISO } from "./dates";
 import { Toolbar } from "./tools/Toolbar";
 import {
   DEFAULT_SECTION_ID,
@@ -155,28 +155,29 @@ export function App() {
           </button>
         ))}
         {active.supportsTemplate && (
-          <button
-            type="button"
-            className="tpl-btn"
-            aria-pressed={templateMode}
-            title={
-              templateMode
-                ? "Salir del modo plantilla"
-                : "Modo plantilla — lo que dibujes se copia en cada día nuevo"
-            }
-            aria-label="Modo plantilla"
-            onClick={toggleTemplate}
-          >
-            P
-          </button>
+          <div className="tpl-wrap">
+            {templateMode && templateFrom && (
+              <span className="tpl-note">
+                se copia en cada día a partir del{" "}
+                <b>{formatShort(templateFrom)}</b>
+              </span>
+            )}
+            <button
+              type="button"
+              className="tpl-btn"
+              aria-pressed={templateMode}
+              title={
+                templateMode ? "Salir del modo plantilla" : "Modo plantilla"
+              }
+              aria-label="Modo plantilla"
+              onClick={toggleTemplate}
+            >
+              P
+            </button>
+          </div>
         )}
 
-        {templateMode ? (
-          <span className="tpl-banner">
-            Modo plantilla · se copia en cada día nuevo
-            {templateFrom ? ` desde ${formatHuman(templateFrom)}` : ""}
-          </span>
-        ) : active.dateScoped ? (
+        {active.dateScoped ? (
           <DateBar date={date} onChange={setDate} />
         ) : (
           <span className="date-static" title="Esta hoja es fija, no cambia con el día">
