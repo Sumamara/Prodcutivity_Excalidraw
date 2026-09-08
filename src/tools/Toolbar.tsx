@@ -76,21 +76,38 @@ export function Toolbar({
     [api],
   );
 
-  // Aplica la herramienta a Excalidraw. Se ejecuta al cambiar de lienzo
-  // (sección nueva → api nuevo) y al entrar/salir del modo celdas, de modo que
-  // cambiar de pestaña NO reinicia la herramienta que estabas usando.
+  // Reaplica la herramienta a Excalidraw para que cambiar de pestaña NO la
+  // reinicie. Depende también de `activeToolType`: al montar una sección nueva
+  // Excalidraw arranca en "selección"; en cuanto lo detectamos, volvemos a
+  // poner el lápiz/herramienta guardada. El guard `!==` evita bucles.
   useEffect(() => {
     if (!api) return;
     const c = cfgRef.current;
     applyPenMode(c.penMode);
+
     if (cellMode && hasCells) {
-      api.setActiveTool({ type: "selection" });
+      if (activeToolType !== "selection") api.setActiveTool({ type: "selection" });
       return;
     }
+
     const p = c.pencils.find((x) => x.id === c.activeId);
-    if (p) applyPencil(p);
-    else applyKind(c.activeId as Kind);
-  }, [api, cellMode, hasCells, applyPencil, applyKind, applyPenMode]);
+    if (p) {
+      // Reaplicar siempre: además del tipo (freedraw) empuja color/grosor.
+      // Converge en 2 pasadas y sin bucle (updateScene con los mismos valores
+      // no provoca re-render).
+      applyPencil(p);
+    } else if (activeToolType !== c.activeId) {
+      applyKind(c.activeId as Kind);
+    }
+  }, [
+    api,
+    cellMode,
+    hasCells,
+    activeToolType,
+    applyPencil,
+    applyKind,
+    applyPenMode,
+  ]);
 
   const selectPencil = (p: Pencil) => {
     onCellMode(false);
