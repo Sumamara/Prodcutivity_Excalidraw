@@ -22,13 +22,16 @@ interface CellsRow {
 }
 
 /**
- * Plantilla de una sección: una sola escena que se COPIA como semilla en cada
- * día nuevo (sin escena propia) cuya fecha sea >= `appliesFrom`. Al copiarse en
- * un día, ese día es libre de borrarla/modificarla sin afectar a la plantilla.
+ * Plantilla de una sección como VERSIONES con fecha. Cada fila es una versión
+ * guardada el día `effectiveFrom`. Para un día D, la versión aplicable es la de
+ * mayor `effectiveFrom <= D`: editar el día 10 crea/actualiza la versión del 10
+ * y no toca lo que ven los días 8-9 (que siguen con la versión del 8).
+ * La versión aplicable se COPIA como semilla en cada día sin tinta propia.
  */
 interface TemplateRow {
-  key: string; // sección, p. ej. "time-blocking"
-  appliesFrom: string; // ISO local YYYY-MM-DD
+  key: string; // "<sección>::<effectiveFrom>"
+  section: string;
+  effectiveFrom: string; // ISO local YYYY-MM-DD
   json: string;
   updated: number;
 }
@@ -50,6 +53,35 @@ class JournalDB extends Dexie {
       cells: "key, updated",
       templates: "key, updated",
     });
+    // v3: la plantilla pasa a ser versiones con fecha. La fila única antigua
+    // (key = "<sección>", con `appliesFrom`) se convierte en versión con fecha.
+    this.version(3)
+      .stores({
+        scenes: "key, updated",
+        cells: "key, updated",
+        templates: "key, section, effectiveFrom",
+      })
+      .upgrade(async (tx) => {
+        const t = tx.table("templates");
+        const rows = (await t.toArray()) as Array<{
+          key: string;
+          appliesFrom?: string;
+          effectiveFrom?: string;
+          json: string;
+          updated?: number;
+        }>;
+        for (const r of rows) {
+          if (r.effectiveFrom || !r.appliesFrom) continue; // ya está en v3
+          await t.delete(r.key);
+          await t.put({
+            key: `${r.key}::${r.appliesFrom}`,
+            section: r.key,
+            effectiveFrom: r.appliesFrom,
+            json: r.json,
+            updated: r.updated ?? Date.now(),
+          });
+        }
+      });
   }
 }
 
@@ -87,33 +119,46 @@ export async function putSceneJSON(
   }
 }
 
-export async function getTemplate(
+/** Versión de plantilla aplicable a `date`: la de mayor `effectiveFrom <= date`. */
+export async function getTemplateFor(
   section: string,
-): Promise<{ appliesFrom: string; json: string } | null> {
+  date: string,
+): Promise<{ effectiveFrom: string; json: string } | null> {
   try {
-    const row = await db.templates.get(section);
-    return row ? { appliesFrom: row.appliesFrom, json: row.json } : null;
+    const rows = await db.templates.where("section").equals(section).toArray();
+    let best: TemplateRow | null = null;
+    for (const r of rows) {
+      if (
+        r.effectiveFrom <= date &&
+        (!best || r.effectiveFrom > best.effectiveFrom)
+      ) {
+        best = r;
+      }
+    }
+    return best ? { effectiveFrom: best.effectiveFrom, json: best.json } : null;
   } catch (err) {
-    console.warn("[db] getTemplate", err);
+    console.warn("[db] getTemplateFor", err);
     return null;
   }
 }
 
-export async function putTemplate(
+/** Guarda (o reemplaza) la versión de plantilla con fecha `effectiveFrom`. */
+export async function putTemplateVersion(
   section: string,
-  appliesFrom: string,
+  effectiveFrom: string,
   json: string,
 ): Promise<boolean> {
   try {
     await db.templates.put({
-      key: section,
-      appliesFrom,
+      key: `${section}::${effectiveFrom}`,
+      section,
+      effectiveFrom,
       json,
       updated: Date.now(),
     });
     return true;
   } catch (err) {
-    console.warn("[db] putTemplate", err);
+    console.warn("[db] putTemplateVersion", err);
     return false;
   }
 }

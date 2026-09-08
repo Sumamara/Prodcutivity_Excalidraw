@@ -6,7 +6,6 @@ import { SheetHotspots } from "./canvas/SheetHotspots";
 import {
   cleanupLegacyStorage,
   loadActiveSection,
-  loadTemplate,
   saveActiveSection,
 } from "./canvas/persistence";
 import type { ExcalidrawAPI } from "./canvas/types";
@@ -34,11 +33,11 @@ export function App() {
   const [toolType, setToolType] = useState<string>("selection");
   // Modo edición de celdas: un toque en la hoja abre el editor de esa celda.
   const [cellMode, setCellMode] = useState(false);
-  // Modo plantilla (secciones con `supportsTemplate`): se edita la plantilla,
-  // que luego se copia como semilla en cada día nuevo desde `templateFrom`.
+  // Modo plantilla (secciones con `supportsTemplate`): se edita la VERSIÓN de
+  // plantilla aplicable al día que ves; al guardar se escribe la versión con
+  // `effectiveFrom = ese día`. Cada día sin tinta propia se siembra con la
+  // versión que le toque (la de mayor fecha <= ese día).
   const [templateMode, setTemplateMode] = useState(false);
-  const [templateFrom, setTemplateFrom] = useState<string | null>(null);
-  const prevTemplateMode = useRef(false);
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
@@ -59,42 +58,14 @@ export function App() {
     lastTransform.current = "";
   }, [sectionId, date, templateMode]);
 
-  // Carga la fecha "aplica desde" de la plantilla de la sección (si la admite).
   // Al cambiar de sección se sale del modo plantilla.
   useEffect(() => {
     setTemplateMode(false);
-    if (!active.supportsTemplate) {
-      setTemplateFrom(null);
-      return;
-    }
-    let alive = true;
-    void loadTemplate(sectionId).then((t) => {
-      if (alive) setTemplateFrom(t?.appliesFrom ?? null);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [sectionId, active.supportsTemplate]);
-
-  // Al SALIR del modo plantilla, relee la fecha por si la plantilla se acaba de
-  // crear (o de vaciar) en esta sesión.
-  useEffect(() => {
-    if (prevTemplateMode.current && !templateMode && active.supportsTemplate) {
-      void loadTemplate(sectionId).then((t) =>
-        setTemplateFrom(t?.appliesFrom ?? null),
-      );
-    }
-    prevTemplateMode.current = templateMode;
-  }, [templateMode, sectionId, active.supportsTemplate]);
+  }, [sectionId]);
 
   const toggleTemplate = useCallback(() => {
-    setTemplateMode((on) => {
-      const next = !on;
-      // Al entrar sin plantilla previa: aplica desde el día que estás viendo.
-      if (next) setTemplateFrom((f) => f ?? date);
-      return next;
-    });
-  }, [date]);
+    setTemplateMode((m) => !m);
+  }, []);
 
   // Al salir del modo celdas, cierra el editor. (Poner Excalidraw en "selección"
   // cuando el modo celdas está activo lo hace la barra, que es la que aplica la
@@ -136,8 +107,9 @@ export function App() {
   // Descansos activos no cambia con el día: se guarda bajo una clave fija.
   const effDate = active.dateScoped ? date : "global";
   const key = `${effDate}:${sectionId}`;
-  // El lienzo se remonta al entrar/salir del modo plantilla (escena distinta).
-  const canvasKey = templateMode ? `tpl:${sectionId}` : key;
+  // El lienzo se remonta al entrar/salir del modo plantilla y, dentro de él, al
+  // cambiar de día (cada día puede editar una versión de plantilla distinta).
+  const canvasKey = templateMode ? `tpl:${sectionId}:${effDate}` : key;
 
   return (
     <div className="app-shell">
@@ -157,10 +129,10 @@ export function App() {
         <div className="app-tabs-right">
           {active.supportsTemplate && (
             <>
-              {templateMode && templateFrom && (
+              {templateMode && (
                 <span className="tpl-note">
                   <b>Modo plantilla</b>
-                  <span>· se copia desde el {formatShort(templateFrom)}</span>
+                  <span>· cambios desde el {formatShort(effDate)}</span>
                 </span>
               )}
               <button
@@ -213,7 +185,6 @@ export function App() {
             onCellTap={onCellTap}
             supportsTemplate={active.supportsTemplate}
             templateMode={templateMode}
-            templateFrom={templateFrom}
           />
 
           {active.cells && active.cells.length > 0 && (

@@ -3,10 +3,10 @@ import { serializeAsJSON } from "@excalidraw/excalidraw";
 import {
   getCells,
   getSceneJSON,
-  getTemplate,
+  getTemplateFor,
   putCells,
   putSceneJSON,
-  putTemplate,
+  putTemplateVersion,
 } from "./db";
 import type { SceneAppState, SceneElements, SceneFiles } from "./types";
 
@@ -67,13 +67,14 @@ export async function loadScene(
 /* ------------------------------- Plantillas ------------------------------- */
 
 /**
- * Carga la plantilla de una sección (escena + fecha desde la que aplica).
- * `null` si esa sección aún no tiene plantilla.
+ * Versión de plantilla aplicable a `date` (escena + su `effectiveFrom`).
+ * `null` si no hay ninguna versión con fecha <= `date`.
  */
-export async function loadTemplate(
+export async function loadTemplateFor(
   section: string,
-): Promise<{ appliesFrom: string; scene: RestoredScene } | null> {
-  const row = await getTemplate(section);
+  date: string,
+): Promise<{ effectiveFrom: string; scene: RestoredScene } | null> {
+  const row = await getTemplateFor(section, date);
   if (!row) return null;
   try {
     const parsed = JSON.parse(row.json) as {
@@ -82,7 +83,7 @@ export async function loadTemplate(
       files?: SceneFiles;
     };
     return {
-      appliesFrom: row.appliesFrom,
+      effectiveFrom: row.effectiveFrom,
       scene: {
         elements: parsed.elements ?? [],
         appState: { ...parsed.appState, collaborators: undefined },
@@ -95,16 +96,17 @@ export async function loadTemplate(
   }
 }
 
-export async function saveTemplate(
+/** Guarda la versión de plantilla con fecha `effectiveFrom` (el día editado). */
+export async function saveTemplateVersion(
   section: string,
-  appliesFrom: string,
+  effectiveFrom: string,
   elements: SceneElements,
   appState: SceneAppState,
   files: SceneFiles,
 ): Promise<boolean> {
   try {
     const json = serializeAsJSON(elements, appState, files, "local");
-    return await putTemplate(section, appliesFrom, json);
+    return await putTemplateVersion(section, effectiveFrom, json);
   } catch (err) {
     console.warn("[persistence] no se pudo guardar la plantilla", err);
     return false;

@@ -6,9 +6,9 @@ import {
   cloneElements,
   debounce,
   loadScene,
-  loadTemplate,
+  loadTemplateFor,
   saveScene,
-  saveTemplate,
+  saveTemplateVersion,
 } from "./persistence";
 import {
   FIT_PAD_LEFT,
@@ -58,12 +58,13 @@ interface CanvasProps {
   cellMode?: boolean;
   /** Toque (no arrastre) en el lienzo estando en cellMode; coords de escena. */
   onCellTap?: (x: number, y: number) => void;
-  /** La sección admite plantilla: un día sin escena se siembra con ella. */
+  /** La sección admite plantilla: un día sin tinta propia se siembra con ella. */
   supportsTemplate?: boolean;
-  /** Modo plantilla activo: se edita/guarda la escena de la plantilla. */
+  /**
+   * Modo plantilla activo: se edita la VERSIÓN de plantilla aplicable a `date`,
+   * y al guardar se escribe la versión con `effectiveFrom = date`.
+   */
   templateMode?: boolean;
-  /** Fecha desde la que aplica la plantilla (se guarda con ella). */
-  templateFrom?: string | null;
 }
 
 type SceneSnapshot = {
@@ -90,7 +91,6 @@ export function Canvas({
   onCellTap,
   supportsTemplate,
   templateMode,
-  templateFrom,
 }: CanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<ExcalidrawAPI | null>(null);
@@ -103,6 +103,10 @@ export function Canvas({
   const lastEls = useRef<SceneElements | null>(null);
   const lastFiles = useRef<SceneFiles | null>(null);
   const firstChange = useRef(true);
+  // Solo se guarda si hubo un cambio real (trazo, borrado, texto). Abrir un día
+  // y salir sin tocar nada NO debe crear una escena: si no, ese día dejaría de
+  // sembrarse desde la plantilla (pasaría a tener "escena propia" vacía).
+  const dirty = useRef(false);
 
   // Excalidraw acepta una promesa como initialData y muestra su propio
   // "cargando" mientras resuelve. Canvas se monta con key={fecha:sección}, así
@@ -110,9 +114,9 @@ export function Canvas({
   const initialData = useMemo<ExcalidrawInitialData>(
     () =>
       (async () => {
-        // Modo plantilla: se edita la escena de la plantilla de la sección.
+        // Modo plantilla: se edita la VERSIÓN aplicable al día `date`.
         if (templateMode) {
-          const tpl = await loadTemplate(sectionId);
+          const tpl = await loadTemplateFor(sectionId, date);
           return {
             elements: tpl?.scene.elements ?? [],
             appState: {
@@ -126,13 +130,15 @@ export function Canvas({
 
         const restored = await loadScene(date, sectionId);
 
-        // Día sin escena propia: si la sección tiene plantilla y su fecha ya
-        // aplica, se siembra con una COPIA (ids nuevos) de la plantilla. A
-        // partir de ahí ese día es independiente (borrar/editar no la toca).
+        // Día sin tinta propia (sin escena, o con una escena vacía): se siembra
+        // con una COPIA (ids nuevos) de la versión de plantilla aplicable a ese
+        // día. En cuanto dibujas/borras algo, se guarda y ese día pasa a ser
+        // independiente de la plantilla.
         let elements = restored?.elements ?? [];
-        if (!restored && supportsTemplate) {
-          const tpl = await loadTemplate(sectionId);
-          if (tpl && date >= tpl.appliesFrom && tpl.scene.elements.length) {
+        const empty = !restored || restored.elements.length === 0;
+        if (empty && supportsTemplate) {
+          const tpl = await loadTemplateFor(sectionId, date);
+          if (tpl && tpl.scene.elements.length) {
             elements = cloneElements(tpl.scene.elements);
           }
         }
@@ -156,25 +162,31 @@ export function Canvas({
     [date, sectionId, templateMode, supportsTemplate],
   );
 
-  const persist = useMemo(
-    () =>
-      debounce((snap: SceneSnapshot) => {
-        const done = (ok: boolean) => (ok ? markSaved() : markError());
-        if (templateMode) {
-          void saveTemplate(
-            sectionId,
-            templateFrom ?? date,
-            snap.els,
-            snap.state,
-            snap.files,
-          ).then(done);
-          return;
-        }
+  const saveNow = useCallback(
+    (snap: SceneSnapshot, done: (ok: boolean) => void) => {
+      if (templateMode) {
+        void saveTemplateVersion(
+          sectionId,
+          date,
+          snap.els,
+          snap.state,
+          snap.files,
+        ).then(done);
+      } else {
         void saveScene(date, sectionId, snap.els, snap.state, snap.files).then(
           done,
         );
+      }
+    },
+    [date, sectionId, templateMode],
+  );
+
+  const persist = useMemo(
+    () =>
+      debounce((snap: SceneSnapshot) => {
+        saveNow(snap, (ok) => (ok ? markSaved() : markError()));
       }, AUTOSAVE_MS),
-    [date, sectionId, templateMode, templateFrom],
+    [saveNow],
   );
 
   const flushViewport = useCallback(() => {
@@ -196,6 +208,7 @@ export function Canvas({
       } else if (elements !== lastEls.current || files !== lastFiles.current) {
         lastEls.current = elements;
         lastFiles.current = files;
+        dirty.current = true;
         markPending();
         persist(snap);
       }
@@ -271,26 +284,15 @@ export function Canvas({
   );
 
   // Guardado inmediato al salir de la fecha/sección/modo (por si el debounce no
-  // disparó).
+  // disparó). Solo si hubo un cambio real: abrir y salir sin tocar no guarda.
   useEffect(() => {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       const s = latestScene.current;
-      if (!s) return;
-      const done = (ok: boolean) => (ok ? markSaved() : markError());
-      if (templateMode) {
-        void saveTemplate(
-          sectionId,
-          templateFrom ?? date,
-          s.els,
-          s.state,
-          s.files,
-        ).then(done);
-      } else {
-        void saveScene(date, sectionId, s.els, s.state, s.files).then(done);
-      }
+      if (!s || !dirty.current) return;
+      saveNow(s, (ok) => (ok ? markSaved() : markError()));
     };
-  }, [date, sectionId, templateMode, templateFrom]);
+  }, [saveNow]);
 
   return (
     <div className="excalidraw-wrapper" ref={wrapperRef}>
