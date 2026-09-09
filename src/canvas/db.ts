@@ -119,7 +119,24 @@ export async function putSceneJSON(
   }
 }
 
-/** Versión de plantilla aplicable a `date`: la de mayor `effectiveFrom <= date`. */
+/** ¿Tiene la versión al menos un elemento sin borrar? */
+function templateHasContent(json: string): boolean {
+  try {
+    const p = JSON.parse(json) as { elements?: unknown };
+    return (
+      Array.isArray(p.elements) &&
+      p.elements.some((e) => !(e as { isDeleted?: boolean }).isDeleted)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Versión de plantilla aplicable a `date`: la de mayor `effectiveFrom <= date`
+ * QUE TENGA CONTENIDO. Una versión que quedó vacía (se borró todo al editarla)
+ * se ignora y se usa la anterior con contenido.
+ */
 export async function getTemplateFor(
   section: string,
   date: string,
@@ -128,12 +145,9 @@ export async function getTemplateFor(
     const rows = await db.templates.where("section").equals(section).toArray();
     let best: TemplateRow | null = null;
     for (const r of rows) {
-      if (
-        r.effectiveFrom <= date &&
-        (!best || r.effectiveFrom > best.effectiveFrom)
-      ) {
-        best = r;
-      }
+      if (r.effectiveFrom > date) continue;
+      if (!templateHasContent(r.json)) continue;
+      if (!best || r.effectiveFrom > best.effectiveFrom) best = r;
     }
     return best ? { effectiveFrom: best.effectiveFrom, json: best.json } : null;
   } catch (err) {

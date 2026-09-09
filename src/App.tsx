@@ -5,6 +5,7 @@ import { CellFields, type CellFieldsHandle } from "./canvas/CellFields";
 import { SheetHotspots } from "./canvas/SheetHotspots";
 import {
   cleanupLegacyStorage,
+  healSeededScenes,
   loadActiveSection,
   saveActiveSection,
 } from "./canvas/persistence";
@@ -38,6 +39,9 @@ export function App() {
   // `effectiveFrom = ese día`. Cada día sin tinta propia se siembra con la
   // versión que le toque (la de mayor fecha <= ese día).
   const [templateMode, setTemplateMode] = useState(false);
+  // Sube al terminar la limpieza única de semillas "congeladas": remonta el
+  // lienzo para que el día actual vuelva a sembrarse desde la plantilla.
+  const [healTick, setHealTick] = useState(0);
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
@@ -49,6 +53,26 @@ export function App() {
 
   useEffect(() => {
     cleanupLegacyStorage();
+
+    // Limpieza única: días de Time blocking cuya escena guardada es una copia
+    // exacta de una versión de plantilla (semillas persistidas por error antes
+    // del arreglo). Al borrarlas, esos días vuelven a seguir la plantilla.
+    const HEAL_KEY = "journal-horas:seed-heal:v1";
+    let alreadyHealed = true;
+    try {
+      alreadyHealed = !!localStorage.getItem(HEAL_KEY);
+    } catch {
+      /* noop */
+    }
+    if (alreadyHealed) return;
+    void healSeededScenes("time-blocking").then(() => {
+      try {
+        localStorage.setItem(HEAL_KEY, "1");
+      } catch {
+        /* noop */
+      }
+      setHealTick((t) => t + 1);
+    });
   }, []);
 
   // Al cambiar de fecha/sección/modo los anchors son nodos nuevos (sin
@@ -109,7 +133,9 @@ export function App() {
   const key = `${effDate}:${sectionId}`;
   // El lienzo se remonta al entrar/salir del modo plantilla y, dentro de él, al
   // cambiar de día (cada día puede editar una versión de plantilla distinta).
-  const canvasKey = templateMode ? `tpl:${sectionId}:${effDate}` : key;
+  // `healTick` fuerza un remonte tras la limpieza única de semillas.
+  const canvasKey =
+    (templateMode ? `tpl:${sectionId}:${effDate}` : key) + `|${healTick}`;
 
   return (
     <div className="app-shell">

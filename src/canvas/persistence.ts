@@ -1,6 +1,7 @@
 import { serializeAsJSON } from "@excalidraw/excalidraw";
 
 import {
+  db,
   getCells,
   getSceneJSON,
   getTemplateFor,
@@ -155,6 +156,91 @@ export function cloneElements(els: SceneElements): SceneElements {
     if ("endBinding" in src) out.endBinding = null;
     return out;
   }) as unknown as SceneElements;
+}
+
+/* --------------------- Limpieza de semillas "congeladas" ------------------- */
+
+/** Campos estables de un elemento (ignora id/seed/nonce/versión). */
+function elementSig(e: Record<string, unknown>): string {
+  const r = (n: unknown) => Math.round((typeof n === "number" ? n : 0) * 10) / 10;
+  const parts: unknown[] = [
+    e.type,
+    r(e.x),
+    r(e.y),
+    r(e.width),
+    r(e.height),
+    r(e.angle),
+    e.strokeColor,
+    e.backgroundColor,
+    e.strokeWidth,
+    e.opacity,
+  ];
+  if (e.type === "freedraw" && Array.isArray(e.points)) {
+    parts.push(
+      JSON.stringify(
+        (e.points as number[][]).map((p) => [r(p[0]), r(p[1])]),
+      ),
+    );
+  } else if (e.type === "text") {
+    parts.push(e.text ?? "", e.fontSize ?? "");
+  }
+  return parts.join("|");
+}
+
+/** Firma estructural de una escena (independiente del orden y de los ids). */
+function sceneSig(els: unknown): string {
+  if (!Array.isArray(els)) return "";
+  return (els as Record<string, unknown>[])
+    .filter((e) => !e.isDeleted)
+    .map(elementSig)
+    .sort()
+    .join("~~");
+}
+
+/**
+ * Borra las escenas de `section` que son una COPIA EXACTA de alguna versión de
+ * plantilla (semillas que se persistieron por error antes de que el guardado
+ * exigiera un cambio real). Así vuelven a seguir la plantilla. No toca días con
+ * tinta propia (su firma no coincide). Pensado para ejecutarse una sola vez.
+ */
+export async function healSeededScenes(section: string): Promise<number> {
+  try {
+    const tplRows = await db.templates
+      .where("section")
+      .equals(section)
+      .toArray();
+    if (!tplRows.length) return 0;
+
+    const tplSigs = new Set<string>();
+    for (const r of tplRows) {
+      try {
+        const p = JSON.parse(r.json) as { elements?: unknown };
+        tplSigs.add(sceneSig(p.elements));
+      } catch {
+        /* noop */
+      }
+    }
+
+    const suffix = `::${section}`;
+    const scenes = await db.scenes.toArray();
+    let removed = 0;
+    for (const s of scenes) {
+      if (!s.key.endsWith(suffix)) continue;
+      try {
+        const p = JSON.parse(s.json) as { elements?: unknown };
+        if (tplSigs.has(sceneSig(p.elements))) {
+          await db.scenes.delete(s.key);
+          removed++;
+        }
+      } catch {
+        /* noop */
+      }
+    }
+    return removed;
+  } catch (err) {
+    console.warn("[persistence] healSeededScenes", err);
+    return 0;
+  }
 }
 
 /** Texto de los campos de celda por (fecha, sección): { "<col>-<fila>": valor }. */
