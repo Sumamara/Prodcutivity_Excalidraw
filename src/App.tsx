@@ -243,6 +243,7 @@ export function App() {
                 key={key}
                 hotspots={active.hotspots}
                 closeRef={hotspotsClose}
+                onNavigate={switchSection}
               />
             </div>
           </div>

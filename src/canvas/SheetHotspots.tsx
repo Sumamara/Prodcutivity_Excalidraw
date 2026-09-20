@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 
 import type { Hotspot, ScaleLegend } from "./hotspot";
 import { MoodMeterModal } from "./MoodMeter";
+import { ReappraisalModal } from "./Reappraisal";
 import "./SheetHotspots.css";
 
 interface OpenState {
@@ -21,14 +22,18 @@ interface OpenState {
 export function SheetHotspots({
   hotspots,
   closeRef,
+  onNavigate,
 }: {
   /** Zonas interactivas de la sección activa. */
   hotspots: Hotspot[];
   /** App registra aquí el cierre para ocultar el popover al mover/zoomear. */
   closeRef: MutableRefObject<(() => void) | null>;
+  /** Cambia de pestaña (para los botones "ir a otra sección" de los popovers). */
+  onNavigate: (sectionId: string) => void;
 }) {
   const [open, setOpen] = useState<OpenState | null>(null);
   const [meterOpen, setMeterOpen] = useState(false);
+  const [reappraisalOpen, setReappraisalOpen] = useState(false);
 
   useEffect(() => {
     closeRef.current = () => setOpen(null);
@@ -95,11 +100,22 @@ export function SheetHotspots({
               setOpen(null);
               setMeterOpen(true);
             }}
+            onOpenReappraisal={() => {
+              setOpen(null);
+              setReappraisalOpen(true);
+            }}
+            onGoSection={(id) => {
+              setOpen(null);
+              onNavigate(id);
+            }}
           />,
           document.body,
         )}
 
       {meterOpen && <MoodMeterModal onClose={() => setMeterOpen(false)} />}
+      {reappraisalOpen && (
+        <ReappraisalModal onClose={() => setReappraisalOpen(false)} />
+      )}
     </>
   );
 }
@@ -111,6 +127,8 @@ function Popover({
   scale,
   onClose,
   onOpenMeter,
+  onOpenReappraisal,
+  onGoSection,
 }: {
   rect: DOMRect;
   title: string;
@@ -118,6 +136,8 @@ function Popover({
   scale?: ScaleLegend;
   onClose: () => void;
   onOpenMeter: () => void;
+  onOpenReappraisal: () => void;
+  onGoSection: (sectionId: string) => void;
 }) {
   const POP_W = scale ? 262 : 250;
   const EST_H = scale ? 400 : 150;
@@ -172,15 +192,35 @@ function Popover({
               ))}
             </ul>
           </div>
-          {scale.moodMeter && (
+          {(scale.moodMeter || scale.reappraisal || scale.sectionLink) && (
             <div className="hs-scale-foot">
-              <button
-                type="button"
-                className="hs-scale-more"
-                onClick={onOpenMeter}
-              >
-                Ver emociones
-              </button>
+              {scale.moodMeter && (
+                <button
+                  type="button"
+                  className="hs-scale-more"
+                  onClick={onOpenMeter}
+                >
+                  Ver emociones
+                </button>
+              )}
+              {scale.reappraisal && (
+                <button
+                  type="button"
+                  className="hs-scale-more"
+                  onClick={onOpenReappraisal}
+                >
+                  Reapreciación
+                </button>
+              )}
+              {scale.sectionLink && (
+                <button
+                  type="button"
+                  className="hs-scale-more"
+                  onClick={() => onGoSection(scale.sectionLink!.sectionId)}
+                >
+                  {scale.sectionLink.label}
+                </button>
+              )}
             </div>
           )}
         </>

@@ -1,0 +1,173 @@
+/* Modal "Reapreciación": reutiliza .mm-backdrop/.mm-panel/.mm-head/.mm-x de
+   MoodMeter.css y solo ajusta ancho y contenido. Acento = morado de Agradabilidad. */
+.ra-panel {
+  width: min(94vw, 560px);
+  max-width: min(94vw, 560px);
+}
+
+.ra-head {
+  border-bottom: 0;
+  background: #5e3aa0;
+}
+
+.ra-head strong {
+  color: #ffffff;
+}
+
+.ra-head .mm-x {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ra-head .mm-x:hover {
+  color: #ffffff;
+}
+
+.ra-body {
+  overflow: auto;
+  padding: 16px 18px 18px;
+  font-family: "Jost", system-ui, sans-serif;
+  color: #1e2a3a;
+}
+
+.ra-lead {
+  margin: 0 0 14px;
+  font: 400 13px/1.5 "Jost", system-ui, sans-serif;
+  color: #3d4653;
+}
+
+.ra-lead b {
+  font-weight: 600;
+  color: #5e3aa0;
+}
+
+/* Situación → Interpretación → Agrado */
+.ra-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.ra-step {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border: 1px solid #d5d9df;
+  border-radius: 9px;
+  background: #f5f6f8;
+  text-align: center;
+}
+
+.ra-step-key {
+  border-color: #5e3aa0;
+  background: #efe9fa;
+}
+
+.ra-step-n {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #8b93a1;
+  color: #ffffff;
+  font: 700 11px/1 "Jost", system-ui, sans-serif;
+}
+
+.ra-step-key .ra-step-n {
+  background: #5e3aa0;
+}
+
+.ra-step-t {
+  font: 600 12px/1.2 "Jost", system-ui, sans-serif;
+}
+
+.ra-step-d {
+  font: 400 10.5px/1.25 "Jost", system-ui, sans-serif;
+  color: #6b6880;
+}
+
+.ra-arrow {
+  align-self: center;
+  color: #8b93a1;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Ejemplo antes → después, con los colores de la escala (bajo = rojo, alto = verde). */
+.ra-example {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ra-ex {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 11px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+}
+
+.ra-ex-low {
+  background: #fdecea;
+  border-color: #f3c2bc;
+}
+
+.ra-ex-high {
+  background: #e8f5ec;
+  border-color: #b9dfc4;
+}
+
+.ra-ex-tag {
+  font: 700 10px/1.2 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ra-ex-low .ra-ex-tag {
+  color: #c0392b;
+}
+
+.ra-ex-high .ra-ex-tag {
+  color: #2f7d4b;
+}
+
+.ra-ex-q {
+  font: 500 12px/1.35 "Jost", system-ui, sans-serif;
+  color: #1e2a3a;
+}
+
+.ra-prompts-title {
+  margin-bottom: 6px;
+  font: 700 11px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #6b6880;
+}
+
+.ra-prompts {
+  margin: 0;
+  padding-left: 18px;
+  font: 400 13px/1.55 "Jost", system-ui, sans-serif;
+  color: #3d4653;
+}
+
+/* Pantallas estrechas: el flujo y el ejemplo pasan a vertical. */
+@media (max-width: 480px) {
+  .ra-flow,
+  .ra-example {
+    flex-direction: column;
+  }
+
+  .ra-arrow,
+  .ra-arrow-down {
+    transform: rotate(90deg);
+  }
+}

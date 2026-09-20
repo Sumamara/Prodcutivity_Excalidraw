@@ -18,40 +18,55 @@ const GRADIENT = [
 function make(
   accent: string,
   labels: string[],
-  opts: { moodMeter?: boolean } = {},
+  opts: {
+    moodMeter?: boolean;
+    reappraisal?: boolean;
+    sectionLink?: ScaleLegend["sectionLink"];
+  } = {},
 ): ScaleLegend {
   return {
     accent,
     rows: labels.map((label, i) => ({ n: 10 - i, label, color: GRADIENT[i] })),
     moodMeter: opts.moodMeter,
+    reappraisal: opts.reappraisal,
+    sectionLink: opts.sectionLink,
   };
 }
 
-export const ENERGIA_SCALE = make("#3a9d5d", [
-  "Al máximo",
-  "Muy enérgico",
-  "Enérgico",
-  "Activo",
-  "Aceptable",
-  "Funcional",
-  "Cansado",
-  "Muy cansado",
-  "Agotado",
-  "Colapsado",
-]);
+export const ENERGIA_SCALE = make(
+  "#3a9d5d",
+  [
+    "Al máximo",
+    "Muy enérgico",
+    "Enérgico",
+    "Activo",
+    "Aceptable",
+    "Funcional",
+    "Cansado",
+    "Muy cansado",
+    "Agotado",
+    "Colapsado",
+  ],
+  // "menu-dia" = pestaña "Descansos activos" (ver sections/registry.ts).
+  { sectionLink: { sectionId: "menu-dia", label: "Pestaña descansos" } },
+);
 
-export const AGRADABILIDAD_SCALE = make("#5e3aa0", [
-  "Plenitud máxima",
-  "Muy bien / Excelente",
-  "Bien",
-  "A gusto",
-  "Ligeramente agradable",
-  "Ligeramente desagradable",
-  "Incómodo / Irritado",
-  "Mal",
-  "Muy mal",
-  "Fatal",
-]);
+export const AGRADABILIDAD_SCALE = make(
+  "#5e3aa0",
+  [
+    "Plenitud máxima",
+    "Muy bien / Excelente",
+    "Bien",
+    "A gusto",
+    "Ligeramente agradable",
+    "Ligeramente desagradable",
+    "Incómodo / Irritado",
+    "Mal",
+    "Muy mal",
+    "Fatal",
+  ],
+  { reappraisal: true },
+);
 
 export const ACTIVACION_SCALE = make(
   "#e8722b",

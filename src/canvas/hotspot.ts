@@ -16,6 +16,10 @@ export interface ScaleLegend {
   rows: ScaleRow[];
   /** Si está, el popover añade un botón que abre la matriz energía × agrado. */
   moodMeter?: boolean;
+  /** Si está, el popover añade un botón "Reapreciación" que abre su tarjeta. */
+  reappraisal?: boolean;
+  /** Si está, el popover añade un botón que lleva a otra pestaña (sección). */
+  sectionLink?: { sectionId: string; label: string };
 }
 
 export interface Hotspot {
