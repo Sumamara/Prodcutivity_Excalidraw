@@ -104,8 +104,8 @@ export function TimeBlockingTemplate() {
       />
 
       {/* ---- encabezado (la fecha va en la barra de pestañas) ---- */}
-      <text x={28} y={48} fontSize={30} letterSpacing={4} fill={NAVY}>
-        TIME BLOCKING
+      <text x={28} y={48} fontSize={28} letterSpacing={1.5} fill={NAVY}>
+        ¿Cuál es la aventura de hoy?
       </text>
       <path d="M735,46 L752,22 L763,36 L770,27 L782,46 Z" fill={NAVY} />
 

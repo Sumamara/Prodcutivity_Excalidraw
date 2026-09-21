@@ -1,5 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { CaptureUpdateAction } from "@excalidraw/excalidraw";
 
+import {
+  freeOffset,
+  getClip,
+  hasClip,
+  instantiate,
+  makeId,
+  pickFiles,
+  pickForCopy,
+  setClip,
+  subscribeClip,
+  topGroupIds,
+  type ClipElement,
+} from "../canvas/sceneClipboard";
 import type { ExcalidrawAPI } from "../canvas/types";
 import { loadTools, saveTools, type Pencil, type ToolConfig } from "./toolPresets";
 import "./Toolbar.css";
@@ -167,6 +181,61 @@ export function Toolbar({
     applyPenMode(next.penMode);
   };
 
+  // ¿Hay algo seleccionado? (habilita "Copiar"). Solo se recalcula cuando cambia
+  // la referencia de la selección, no en cada frame de un trazo.
+  const [hasSelection, setHasSelection] = useState(false);
+  useEffect(() => {
+    if (!api) return;
+    let lastIds: unknown = null;
+    const update = (
+      els: readonly { id: string; isDeleted?: boolean }[],
+      st: { selectedElementIds: Readonly<Record<string, boolean | undefined>> },
+    ) => {
+      if (st.selectedElementIds === lastIds) return;
+      lastIds = st.selectedElementIds;
+      setHasSelection(els.some((e) => !e.isDeleted && st.selectedElementIds[e.id]));
+    };
+    update(api.getSceneElements(), api.getAppState());
+    return api.onChange((els, st) => update(els, st));
+  }, [api]);
+
+  const clipReady = useSyncExternalStore(subscribeClip, hasClip, hasClip);
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+
+  const copySelection = () => {
+    if (!api) return;
+    const els = api.getSceneElements() as unknown as readonly ClipElement[];
+    const picked = pickForCopy(els, api.getAppState().selectedElementIds);
+    if (!picked.length) return;
+    setClip(picked, pickFiles(picked, api.getFiles() as Record<string, unknown>));
+    setCopied(true);
+    window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setCopied(false), 1200);
+  };
+
+  const pasteClip = () => {
+    const c = getClip();
+    if (!api || !c) return;
+    // Quedan seleccionadas las copias: se pueden mover de inmediato.
+    selectKind("selection");
+    const all = api.getSceneElementsIncludingDeleted() as unknown as readonly ClipElement[];
+    const fresh = instantiate(c.elements, freeOffset(all, c.elements), makeId);
+    const files = Object.values(c.files);
+    if (files.length) api.addFiles(files as Parameters<typeof api.addFiles>[0]);
+    api.updateScene({
+      elements: [...all, ...fresh] as unknown as Parameters<
+        typeof api.updateScene
+      >[0]["elements"],
+      appState: {
+        selectedElementIds: Object.fromEntries(fresh.map((e) => [e.id, true])),
+        selectedGroupIds: Object.fromEntries(topGroupIds(fresh).map((g) => [g, true])),
+      },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+  };
+
   const patchActivePencil = (patch: Partial<Pencil>) => {
     setCfg((c) => {
       const pencils = c.pencils.map((p) =>
@@ -289,6 +358,34 @@ export function Toolbar({
         onClick={() => selectKind("eraser")}
       >
         <KindIcon kind="eraser" />
+      </button>
+
+      <span className="tb-sep" />
+
+      <button
+        type="button"
+        className="tb-btn"
+        data-active={copied}
+        disabled={!hasSelection}
+        title={
+          hasSelection
+            ? "Copiar la selección"
+            : "Copiar · primero selecciona con la herramienta Seleccionar"
+        }
+        aria-label="Copiar"
+        onClick={copySelection}
+      >
+        {copied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+      <button
+        type="button"
+        className="tb-btn"
+        disabled={!clipReady}
+        title={clipReady ? "Pegar lo copiado en este día" : "Pegar · aún no has copiado nada"}
+        aria-label="Pegar"
+        onClick={pasteClip}
+      >
+        <PasteIcon />
       </button>
 
       <span className="tb-sep" />
@@ -565,6 +662,62 @@ function RedoIcon() {
     >
       <path d="M15 7l5 5-5 5" />
       <path d="M20 12H9a5 5 0 0 0 0 10h3" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+    </svg>
+  );
+}
+
+function PasteIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
     </svg>
   );
 }

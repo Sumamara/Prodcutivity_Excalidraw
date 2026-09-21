@@ -8,7 +8,7 @@ export interface ScaleRow {
   color: string;
 }
 
-/** Leyenda de una escala 1–10 (nivel de energía, agradabilidad, activación). */
+/** Leyenda de una escala 1–10 (energía, agradabilidad, activación, evitación). */
 export interface ScaleLegend {
   /** Color de la cabecera del popover. */
   accent: string;
@@ -18,6 +18,8 @@ export interface ScaleLegend {
   moodMeter?: boolean;
   /** Si está, el popover añade un botón "Reapreciación" que abre su tarjeta. */
   reappraisal?: boolean;
+  /** Si está, el popover añade un botón que abre el diagrama "¿Estoy evitando?". */
+  avoidance?: boolean;
   /** Si está, el popover añade un botón que lleva a otra pestaña (sección). */
   sectionLink?: { sectionId: string; label: string };
 }

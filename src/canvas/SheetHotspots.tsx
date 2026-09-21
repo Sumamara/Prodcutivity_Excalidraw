@@ -1,6 +1,7 @@
 import { useEffect, useState, type MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 
+import { AvoidanceModal } from "./Avoidance";
 import type { Hotspot, ScaleLegend } from "./hotspot";
 import { MoodMeterModal } from "./MoodMeter";
 import { ReappraisalModal } from "./Reappraisal";
@@ -34,6 +35,7 @@ export function SheetHotspots({
   const [open, setOpen] = useState<OpenState | null>(null);
   const [meterOpen, setMeterOpen] = useState(false);
   const [reappraisalOpen, setReappraisalOpen] = useState(false);
+  const [avoidanceOpen, setAvoidanceOpen] = useState(false);
 
   useEffect(() => {
     closeRef.current = () => setOpen(null);
@@ -104,6 +106,10 @@ export function SheetHotspots({
               setOpen(null);
               setReappraisalOpen(true);
             }}
+            onOpenAvoidance={() => {
+              setOpen(null);
+              setAvoidanceOpen(true);
+            }}
             onGoSection={(id) => {
               setOpen(null);
               onNavigate(id);
@@ -113,6 +119,19 @@ export function SheetHotspots({
         )}
 
       {meterOpen && <MoodMeterModal onClose={() => setMeterOpen(false)} />}
+      {avoidanceOpen && (
+        <AvoidanceModal
+          onClose={() => setAvoidanceOpen(false)}
+          onReappraisal={() => {
+            setAvoidanceOpen(false);
+            setReappraisalOpen(true);
+          }}
+          onRest={() => {
+            setAvoidanceOpen(false);
+            onNavigate("menu-dia");
+          }}
+        />
+      )}
       {reappraisalOpen && (
         <ReappraisalModal onClose={() => setReappraisalOpen(false)} />
       )}
@@ -128,6 +147,7 @@ function Popover({
   onClose,
   onOpenMeter,
   onOpenReappraisal,
+  onOpenAvoidance,
   onGoSection,
 }: {
   rect: DOMRect;
@@ -137,6 +157,7 @@ function Popover({
   onClose: () => void;
   onOpenMeter: () => void;
   onOpenReappraisal: () => void;
+  onOpenAvoidance: () => void;
   onGoSection: (sectionId: string) => void;
 }) {
   const POP_W = scale ? 262 : 250;
@@ -192,7 +213,7 @@ function Popover({
               ))}
             </ul>
           </div>
-          {(scale.moodMeter || scale.reappraisal || scale.sectionLink) && (
+          {(scale.moodMeter || scale.reappraisal || scale.avoidance || scale.sectionLink) && (
             <div className="hs-scale-foot">
               {scale.moodMeter && (
                 <button
@@ -210,6 +231,15 @@ function Popover({
                   onClick={onOpenReappraisal}
                 >
                   Reapreciación
+                </button>
+              )}
+              {scale.avoidance && (
+                <button
+                  type="button"
+                  className="hs-scale-more"
+                  onClick={onOpenAvoidance}
+                >
+                  ¿Qué hago si evito?
                 </button>
               )}
               {scale.sectionLink && (

@@ -12,6 +12,7 @@ import {
   ACTIVACION_SCALE,
   AGRADABILIDAD_SCALE,
   ENERGIA_SCALE,
+  EVITACION_SCALE,
 } from "./scales";
 
 /** Lienzo virtual de esta plantilla (apaisado). */
@@ -96,7 +97,7 @@ const NARROW_COLS: {
   { id: "energia", title: "¿Nivel de energía?", body: "Tu energía mientras la haces, de 1 a 10.", scale: ENERGIA_SCALE },
   { id: "ag", title: "¿Agradabilidad?", body: "Cuánto te gustó hacerla, de 1 a 10.", scale: AGRADABILIDAD_SCALE },
   { id: "ac", title: "¿Nivel de activación?", body: "Cuánta activación sentiste, de 1 a 10.", scale: ACTIVACION_SCALE },
-  { id: "ev", title: "Ev · evitación", body: "¿La estabas usando para evitar otra cosa? De 1 a 10." },
+  { id: "ev", title: "¿Estoy evitando?", body: "¿Estás evitando algo con esta tarea? De 1 a 10.", scale: EVITACION_SCALE },
 ];
 
 const COL_LEFT = [TABLE_L, ...V_BORDERS.slice(0, 7)]; // 30, 70, 110, 150, 190, 220, 250, 280

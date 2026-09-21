@@ -21,6 +21,7 @@ function make(
   opts: {
     moodMeter?: boolean;
     reappraisal?: boolean;
+    avoidance?: boolean;
     sectionLink?: ScaleLegend["sectionLink"];
   } = {},
 ): ScaleLegend {
@@ -29,6 +30,7 @@ function make(
     rows: labels.map((label, i) => ({ n: 10 - i, label, color: GRADIENT[i] })),
     moodMeter: opts.moodMeter,
     reappraisal: opts.reappraisal,
+    avoidance: opts.avoidance,
     sectionLink: opts.sectionLink,
   };
 }
@@ -83,4 +85,22 @@ export const ACTIVACION_SCALE = make(
     "Mínima",
   ],
   { moodMeter: true },
+);
+
+/** 10 = evito por completo (rojo) … 1 = sin evitar (azul). */
+export const EVITACION_SCALE = make(
+  "#2c7a8c",
+  [
+    "Huyendo por completo",
+    "Evito casi todo",
+    "Evito mucho",
+    "Evito bastante",
+    "Evito a ratos",
+    "Me distraigo a veces",
+    "Ligera tentación",
+    "Casi sin evitar",
+    "Enfocado",
+    "Sin evitar",
+  ],
+  { avoidance: true },
 );

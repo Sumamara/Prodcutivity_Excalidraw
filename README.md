@@ -43,6 +43,7 @@ src/
     db.ts              # IndexedDB (Dexie): filas por "<fecha>::<sección>"
     persistence.ts     # saveScene/loadScene + loadCells/saveCells (async, por fecha+sección)
   canvas/cellsStore.ts # ÚNICO escritor de celdas (por parches, transaccional, multi-pestaña)
+  canvas/sceneClipboard.ts # portapapeles propio de la tinta (botones Copiar/Pegar de la barra; sobrevive al cambio de día)
   timer/
     timerCore.ts       # puro: parseEsp, formato, máquina de estados (probado con `npm test`)
     timerStore.ts      # timer activo (fuera de React), persistencia y escritura de Ti/Tf/Real
@@ -146,5 +147,10 @@ Xcode → target **App** → *Signing & Capabilities* → tu *Team* → elegir i
   importarse de subrutas internas, que cambian entre versiones.
 - Barra de herramientas propia ([src/tools/](src/tools/)); la de Excalidraw se
   oculta por CSS. La API se expone vía `onApiReady`.
+- **Copiar / Pegar en la barra** (pensado para el iPad, donde el menú de mantener pulsado
+  de Excalidraw reemplaza la selección por un solo trazo): *Copiar* guarda la selección
+  fuera del lienzo (memoria + `localStorage`); *Pegar* la inserta en el día actual en las
+  **mismas coordenadas** (o desplazada 24 px si ya hay una copia idéntica), con ids nuevos
+  y como un solo paso de Deshacer. Lógica pura en `sceneClipboard.ts`.
 - Encaje de la hoja: constantes en [src/canvas/fitConfig.ts](src/canvas/fitConfig.ts);
   ese módulo fuerza recarga de página al editarlo (`import.meta.hot`).
