@@ -149,11 +149,7 @@ export interface Cell {
   y: number;
   w: number;
   h: number;
-  /**
-   * `num`/`text`: campo de escritura. `check`: se marca con un toque, alternando
-   * vacío → ✓ → ~ (a medias) → ✗ → vacío (hoja de hábitos).
-   */
-  kind: "num" | "text" | "check";
+  kind: "num" | "text";
 }
 
 export const CELLS: Cell[] = (() => {

@@ -16,15 +16,24 @@ import {
 } from "./TimeBlockingTemplate";
 import {
   HabitosTemplate,
-  HABITOS_CELLS,
   HABITOS_HOTSPOTS,
   SHEET_SIZE as HABITOS_SIZE,
 } from "./HabitosTemplate";
+import { HabitsLayer } from "../habits/HabitsLayer";
+import { HabitTabBadge } from "../habits/TabBadge";
 import {
   MenuDiaTemplate,
   MENU_DIA_HOTSPOTS,
   SHEET_SIZE as MENU_DIA_SIZE,
 } from "./MenuDiaTemplate";
+
+/** Props de la capa dinámica (`overlay`) que una sección pinta sobre su hoja. */
+export interface SectionOverlayProps {
+  /** Día que se está viendo (ISO). */
+  date: string;
+  /** Cambia el día global (p. ej. desde la vista del mes). */
+  onDateChange: (date: string) => void;
+}
 
 export interface Section {
   id: string;
@@ -56,6 +65,13 @@ export interface Section {
    * `cells`; las columnas se indican por su nombre (ids `<columna>-<fila>`).
    */
   timer?: TimerColumns;
+  /**
+   * Capa de componentes reales (botones, textos dinámicos) que se pinta sobre la
+   * hoja con el MISMO `transform` que las demás capas y en unidades de la hoja.
+   */
+  overlay?: ComponentType<SectionOverlayProps>;
+  /** Insignia que se muestra dentro de la pestaña (p. ej. "3 pendientes"). */
+  tabBadge?: ComponentType;
 }
 
 export const SECTIONS: Section[] = [
@@ -90,16 +106,17 @@ export const SECTIONS: Section[] = [
     hotspots: MENU_DIA_HOTSPOTS,
   },
   {
-    // Seguimiento manual de hábitos: una sola hoja persistente (las fechas se
-    // escriben a mano en la propia hoja, no dependen de la barra de fecha).
+    // Hábitos: una hoja VERTICAL por día (sigue la fecha global). Lo dinámico
+    // (filas, rachas, marcas) lo pinta `overlay`; debajo hay tinta para notas.
     id: "habitos",
     label: "Hábitos",
     Template: HabitosTemplate,
     width: HABITOS_SIZE.w,
     height: HABITOS_SIZE.h,
-    dateScoped: false,
+    dateScoped: true,
     hotspots: HABITOS_HOTSPOTS,
-    cells: HABITOS_CELLS,
+    overlay: HabitsLayer,
+    tabBadge: HabitTabBadge,
   },
 ];
 

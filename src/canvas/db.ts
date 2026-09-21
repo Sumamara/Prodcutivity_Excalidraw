@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 
+import type { Habit, ISODate, LogState } from "../habits/habitCore";
 import type {
   ActiveTimer,
   CellPatch,
@@ -42,6 +43,15 @@ interface TemplateRow {
   updated: number;
 }
 
+/** Marca explícita de un hábito en un día. El ✗ automático NO se guarda. */
+export interface HabitLogRow {
+  key: string; // "<habitId>::<fecha>"
+  habitId: string;
+  date: ISODate;
+  state: LogState;
+  at: number;
+}
+
 /** Temporizador activo: una sola fila con `key = "active"`. */
 interface TimerRow {
   key: string;
@@ -55,6 +65,8 @@ class JournalDB extends Dexie {
   timers!: Table<TimerRow, string>;
   /** Sesiones terminadas del temporizador (solo se añaden). */
   sessions!: Table<SessionRow, string>;
+  habits!: Table<Habit, string>;
+  habitLogs!: Table<HabitLogRow, string>;
 
   constructor() {
     super("journal-horas");
@@ -104,6 +116,16 @@ class JournalDB extends Dexie {
       templates: "key, section, effectiveFrom",
       timers: "key",
       sessions: "id, date, endedAt",
+    });
+    // v5: hábitos por día (hábitos + marcas explícitas). Aditivo.
+    this.version(5).stores({
+      scenes: "key, updated",
+      cells: "key, updated",
+      templates: "key, section, effectiveFrom",
+      timers: "key",
+      sessions: "id, date, endedAt",
+      habits: "id, order",
+      habitLogs: "key, habitId, date",
     });
   }
 }
@@ -281,5 +303,98 @@ export async function addSession(session: SessionRow): Promise<boolean> {
   } catch (err) {
     console.warn("[db] addSession", err);
     return false;
+  }
+}
+
+/* --------------------------------- Hábitos -------------------------------- */
+
+export async function getAllHabits(): Promise<Habit[]> {
+  try {
+    return await db.habits.toArray();
+  } catch (err) {
+    console.warn("[db] getAllHabits", err);
+    return [];
+  }
+}
+
+export async function putHabit(habit: Habit): Promise<boolean> {
+  try {
+    await db.habits.put(habit);
+    return true;
+  } catch (err) {
+    console.warn("[db] putHabit", err);
+    return false;
+  }
+}
+
+/** Borra el hábito y todas sus marcas (una sola transacción). */
+export async function deleteHabitAndLogs(habitId: string): Promise<boolean> {
+  try {
+    await db.transaction("rw", db.habits, db.habitLogs, async () => {
+      await db.habitLogs.where("habitId").equals(habitId).delete();
+      await db.habits.delete(habitId);
+    });
+    return true;
+  } catch (err) {
+    console.warn("[db] deleteHabitAndLogs", err);
+    return false;
+  }
+}
+
+export async function getAllHabitLogs(): Promise<HabitLogRow[]> {
+  try {
+    return await db.habitLogs.toArray();
+  } catch (err) {
+    console.warn("[db] getAllHabitLogs", err);
+    return [];
+  }
+}
+
+export async function getHabitLog(key: string): Promise<HabitLogRow | undefined> {
+  try {
+    return await db.habitLogs.get(key);
+  } catch (err) {
+    console.warn("[db] getHabitLog", err);
+    return undefined;
+  }
+}
+
+export async function putHabitLog(row: HabitLogRow): Promise<boolean> {
+  try {
+    await db.habitLogs.put(row);
+    return true;
+  } catch (err) {
+    console.warn("[db] putHabitLog", err);
+    return false;
+  }
+}
+
+export async function deleteHabitLog(key: string): Promise<boolean> {
+  try {
+    await db.habitLogs.delete(key);
+    return true;
+  } catch (err) {
+    console.warn("[db] deleteHabitLog", err);
+    return false;
+  }
+}
+
+/**
+ * Nombres escritos en la antigua hoja manual de 31 columnas (celdas `hab-<n>` de
+ * `global::habitos`), en orden. Sirve para importarlos una sola vez.
+ */
+export async function getLegacyHabitNames(): Promise<string[]> {
+  try {
+    const row = await db.cells.get("global::habitos");
+    const values = row?.values ?? {};
+    return Object.keys(values)
+      .map((k) => /^hab-(\d+)$/.exec(k))
+      .filter((m): m is RegExpExecArray => !!m)
+      .sort((a, b) => Number(a[1]) - Number(b[1]))
+      .map((m) => (values[m[0]] ?? "").trim())
+      .filter(Boolean);
+  } catch (err) {
+    console.warn("[db] getLegacyHabitNames", err);
+    return [];
   }
 }

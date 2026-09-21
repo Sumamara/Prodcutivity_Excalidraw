@@ -21,7 +21,7 @@ Plan de arquitectura completo: <https://claude.ai/code/artifact/55098a79-0f9e-4d
 
 - [x] **Temporizador por fila** (Concentración): en modo celdas, al tocar la celda **Esp** de una fila (con valor válido) aparece ▶ a su izquierda (si no la tocas, está oculto). Al pulsarlo arranca una cuenta atrás con esos minutos, rellena Ti, y al terminar (■) rellena Tf y Real. Al llegar a 0, o al pulsar ■, sale un aviso verde "Tiempo finalizado · ¡Muy bien!" (Replantear / Descansar 15–20 % del tiempo trabajado); al llegar a 0 el timer sigue en negativo (amarillo apagado). Un solo timer activo, funciona en cualquier fecha. Sin timer, el contador de la cabecera queda en `00:00` con ▶: inicia un **cronómetro libre** (cuenta hacia arriba) y al detenerlo sale el mismo aviso con el tiempo de descanso sugerido. Esp acepta `90`, `1.5` (horas), `2h`, `1h30`, `1:30`, `90m` y lo convierte a minutos al salir de la celda. Diseño completo en [Implementacion Timer.md](Implementacion%20Timer.md)
 
-- [x] **Pestaña Hábitos**: seguimiento manual. Columna de hábitos (20 filas) y 31 columnas de días; la fecha de cada día se escribe en la fila gris justo al marcarlo (celdas de texto o a mano) y **tocando una celda** se marca ✓ (cumplido) → ~ (a medias, amarillo) → ✗ (no cumplido) → vacío (funciona con la herramienta Mover y en modo celdas; también se puede marcar a mano con el lápiz). Es una sola hoja persistente, sin depender de la barra de fecha ([HabitosTemplate.tsx](src/sections/HabitosTemplate.tsx))
+- [x] **Pestaña Hábitos (por día, vertical)**: una hoja por día que sigue la fecha global. Cada hábito tiene nombre, hora recomendada ("Pendiente" si ya pasó), días de la semana, botón del día (un toque cicla ✓ → ~ → ✗ → vacío), **racha**, **récord** y engrane ⚙ (editar, pausar, eliminar). Lo no marcado al terminar el día es **✗ automático** (atenuado, editable). ~ vale 0,25 en el porcentaje y no rompe la racha. **Extender** abre la vista del mes (fechas automáticas, editable). **Recordatorios**: popup a la hora del hábito (con la app abierta) + notificación del navegador si la pestaña está en segundo plano; interruptor general (campana) y por hábito. Hasta 12 hábitos activos. Franja de notas a mano. Diseño en [Implementacion Habitos.md](Implementacion%20Habitos.md)
 
 ### Siguiente
 
@@ -51,6 +51,16 @@ src/
     TimerChip.tsx      # contador de la cabecera (a la izquierda de la fecha)
     RowPlayLayer.tsx   # ▶ del margen (solo fila Esp tocada) + resaltado gris de la fila activa
     TimeUpDialog.tsx   # aviso "Tiempo finalizado" al llegar a 0
+  habits/
+    habitCore.ts       # PURO: calendario, estado del día, ✗ automático, rachas, %, recordatorios (`npm test`)
+    habitsStore.ts     # hábitos + marcas en memoria, optimista, Dexie, multi-pestaña
+    HabitsLayer.tsx    # filas sobre la hoja (botón del día, racha, récord, engrane, "Pendiente")
+    HabitDialog.tsx    # engrane: crear/editar/pausar/eliminar (carga diferida)
+    MonthView.tsx      # "Extender": vista del mes editable (carga diferida)
+    reminders.ts       # planificador de recordatorios (popup + Notification, sin duplicados)
+    ReminderHost.tsx   # popup "Recuerda tu hábito"
+    TabBadge.tsx       # insignia de pendientes en la pestaña
+    minute.ts          # reloj de 1 minuto
   dates.ts             # todayISO / shiftISO / formatHuman (ISO local YYYY-MM-DD)
   DateBar.tsx          # selector de fecha global en la barra de pestañas
     types.ts           # tipos derivados de las props del componente
@@ -58,7 +68,7 @@ src/
     registry.ts             # SECTIONS: id, label, Template, hotspots
     TimeBlockingTemplate.tsx # rejilla horaria 06:00–22:00 (30 min)
     MenuDiaTemplate.tsx      # "carta" del día: Entrada / Principal / Guarnición / Postre
-    HabitosTemplate.tsx      # hábitos × 31 días, todo manual (fechas y checks)
+    HabitosTemplate.tsx      # hoja vertical de hábitos del día (rejilla + geometría `HB`)
   App.tsx              # pestañas + .page-frame (sheet-layer + Canvas + hotspot-layer)
   main.tsx
 ```

@@ -241,6 +241,16 @@ body {
   pointer-events: none;
 }
 
+/* Capa dinámica de una sección (p. ej. las filas de hábitos): componentes reales
+   sobre la hoja; solo sus botones reciben punteros. */
+.overlay-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* Capa de zonas interactivas de la hoja (cabeceras), por encima del lienzo. */
 .hotspot-layer {
   position: absolute;
@@ -255,7 +265,8 @@ body {
 .sheet-anchor,
 .cells-anchor,
 .hotspot-anchor,
-.play-anchor {
+.play-anchor,
+.overlay-anchor {
   position: absolute;
   top: 0;
   left: 0;

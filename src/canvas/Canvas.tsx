@@ -56,11 +56,7 @@ interface CanvasProps {
   onToolChange?: (toolType: string) => void;
   /** Modo edición de celdas: un toque abre el editor de la celda tocada. */
   cellMode?: boolean;
-  /**
-   * Toque (no arrastre, ni gesto de varios dedos) en el lienzo, en modo celdas o
-   * con la herramienta Mover; coords de escena. Con Mover, la app solo lo usa para
-   * alternar celdas `check`.
-   */
+  /** Toque (no arrastre) en el lienzo estando en cellMode; coords de escena. */
   onCellTap?: (x: number, y: number) => void;
   /** La sección admite plantilla: un día sin tinta propia se siembra con ella. */
   supportsTemplate?: boolean;
@@ -103,12 +99,6 @@ export function Canvas({
   const lastTool = useRef<string>("");
   const cellModeRef = useRef(false);
   cellModeRef.current = !!cellMode;
-  // Punteros activos: si durante el toque hubo 2+ dedos (zoom/pan), no cuenta como
-  // toque de celda (evita marcar un check por accidente al terminar un pellizco).
-  const pointersRef = useRef(new Set<number>());
-  const multiTouchRef = useRef(false);
-  // Inicio del toque actual (solo si empezó sobre el lienzo y con un único dedo).
-  const tapStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const latestScene = useRef<SceneSnapshot | null>(null);
   const lastEls = useRef<SceneElements | null>(null);
   const lastFiles = useRef<SceneFiles | null>(null);
@@ -304,69 +294,15 @@ export function Canvas({
     };
   }, [saveNow]);
 
-  // La herramienta Mover no llama al `onPointerUp` de Excalidraw, así que el
-  // toque se detecta aquí: un solo dedo/ratón, sin arrastre, sobre el lienzo.
-  // Se convierte a coordenadas de escena y se entrega como toque de celda.
-  const handleHandTap = (e: React.PointerEvent) => {
-    const start = tapStartRef.current;
-    tapStartRef.current = null;
-    const api = apiRef.current;
-    if (!start || start.id !== e.pointerId || multiTouchRef.current || !api) return;
-    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) return;
-    const st = api.getAppState();
-    if (st.activeTool.type !== "hand") return; // en modo celdas lo gestiona onPointerUp
-    if (st.penMode && e.pointerType === "touch") return; // rechazo de palma
-    const z = st.zoom.value;
-    onCellTap?.(
-      (e.clientX - st.offsetLeft) / z - st.scrollX,
-      (e.clientY - st.offsetTop) / z - st.scrollY,
-    );
-  };
-
-  // Se suelta el puntero DESPUÉS de que Excalidraw (listener en window) haya
-  // consultado `multiTouchRef`, por eso el `setTimeout`.
-  const releasePointer = (e: React.PointerEvent) => {
-    const id = e.pointerId;
-    setTimeout(() => {
-      pointersRef.current.delete(id);
-      if (pointersRef.current.size === 0) multiTouchRef.current = false;
-    }, 0);
-  };
-
   return (
-    <div
-      className="excalidraw-wrapper"
-      ref={wrapperRef}
-      onPointerDownCapture={(e) => {
-        // Un puntero primario abre un gesto nuevo: se descarta cualquier resto
-        // (p. ej. un pointerup perdido) para no bloquear los toques para siempre.
-        if (e.isPrimary) {
-          pointersRef.current.clear();
-          multiTouchRef.current = false;
-        }
-        pointersRef.current.add(e.pointerId);
-        if (pointersRef.current.size > 1) multiTouchRef.current = true;
-        tapStartRef.current =
-          pointersRef.current.size === 1 &&
-          (e.target as HTMLElement).tagName === "CANVAS"
-            ? { id: e.pointerId, x: e.clientX, y: e.clientY }
-            : null;
-      }}
-      onPointerUp={(e) => {
-        handleHandTap(e);
-        releasePointer(e);
-      }}
-      onPointerCancel={releasePointer}
-    >
+    <div className="excalidraw-wrapper" ref={wrapperRef}>
       <Excalidraw
         excalidrawAPI={onApi}
         initialData={initialData}
         onChange={handleChange}
         onPointerUp={(_tool, st) => {
-          // Modo celdas (herramienta Selección). Con Mover ver `handleHandTap`.
           if (!cellModeRef.current) return;
-          if (multiTouchRef.current) return;
-          // Solo un toque (sin arrastre) cuenta como toque de celda.
+          // Solo un toque (sin arrastre) abre el editor de la celda.
           const dx = Math.abs(st.lastCoords.x - st.origin.x);
           const dy = Math.abs(st.lastCoords.y - st.origin.y);
           if (dx < 6 && dy < 6) onCellTap?.(st.origin.x, st.origin.y);

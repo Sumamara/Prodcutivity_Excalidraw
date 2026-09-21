@@ -14,6 +14,8 @@ import { DateBar } from "./DateBar";
 import { SaveIndicator } from "./SaveIndicator";
 import { formatShort, todayISO } from "./dates";
 import { Toolbar } from "./tools/Toolbar";
+import { hydrateHabits } from "./habits/habitsStore";
+import { ReminderHost } from "./habits/ReminderHost";
 import { RowPlayLayer } from "./timer/RowPlayLayer";
 import { TimerChip } from "./timer/TimerChip";
 import { TimeUpDialog } from "./timer/TimeUpDialog";
@@ -59,6 +61,7 @@ export function App() {
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
   const cellsAnchorRef = useRef<HTMLDivElement>(null);
   const playAnchorRef = useRef<HTMLDivElement>(null);
+  const overlayAnchorRef = useRef<HTMLDivElement>(null);
   const cellFieldsRef = useRef<CellFieldsHandle>(null);
   const hotspotsClose = useRef<(() => void) | null>(null);
   const lastVp = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
@@ -68,6 +71,8 @@ export function App() {
     cleanupLegacyStorage();
     // Recupera el temporizador activo (recarga / navegador cerrado).
     void hydrateTimer();
+    // Carga los hábitos y sus marcas (e importa una vez los nombres antiguos).
+    void hydrateHabits();
 
     // Limpieza única: días de Time blocking cuya escena guardada es una copia
     // exacta de una versión de plantilla (semillas persistidas por error antes
@@ -118,13 +123,9 @@ export function App() {
     if (!cellMode) cellFieldsRef.current?.close();
   }, [cellMode]);
 
-  // Fuera del modo celdas (herramienta Mover) solo responden las celdas `check`.
-  const onCellTap = useCallback(
-    (x: number, y: number) => {
-      cellFieldsRef.current?.editAt(x, y, { checksOnly: !cellMode });
-    },
-    [cellMode],
-  );
+  const onCellTap = useCallback((x: number, y: number) => {
+    cellFieldsRef.current?.editAt(x, y);
+  }, []);
 
   // Anclamos hoja y zonas interactivas al viewport de Excalidraw con el mismo
   // transform, sin re-render en cada frame. Si el transform no cambió (p. ej.
@@ -138,6 +139,7 @@ export function App() {
     if (hotspotsAnchorRef.current) hotspotsAnchorRef.current.style.transform = t;
     if (cellsAnchorRef.current) cellsAnchorRef.current.style.transform = t;
     if (playAnchorRef.current) playAnchorRef.current.style.transform = t;
+    if (overlayAnchorRef.current) overlayAnchorRef.current.style.transform = t;
 
     const p = lastVp.current;
     if (p.scrollX !== v.scrollX || p.scrollY !== v.scrollY || p.zoom !== v.zoom) {
@@ -208,6 +210,7 @@ export function App() {
             onClick={() => switchSection(s.id)}
           >
             {s.label}
+            {s.tabBadge && <s.tabBadge />}
           </button>
         ))}
         <div className="app-tabs-right">
@@ -318,6 +321,22 @@ export function App() {
             </div>
           )}
 
+          {active.overlay && (
+            <div className="overlay-layer">
+              <div
+                className="overlay-anchor"
+                ref={overlayAnchorRef}
+                style={sheetStyle}
+              >
+                <active.overlay
+                  key={key}
+                  date={effDate}
+                  onDateChange={setDate}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="hotspot-layer">
             <div
               className="hotspot-anchor"
@@ -334,6 +353,7 @@ export function App() {
           </div>
 
           <TimeUpDialog />
+          <ReminderHost />
 
           <Toolbar
             api={api}

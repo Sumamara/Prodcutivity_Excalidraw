@@ -1,0 +1,943 @@
+/* =========================================================================
+   Hábitos: capa de la hoja del día, diálogo del engrane, vista del mes, insignia
+   ========================================================================= */
+
+/* ---------------------------- Capa sobre la hoja ---------------------------- */
+/* Todo va en unidades de la hoja (la capa se escala con el mismo transform). */
+.hb-layer {
+  position: absolute;
+  inset: 0;
+  font-family: "Jost", system-ui, sans-serif;
+  color: #1e2a3a;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none; /* solo los botones reciben punteros */
+}
+
+.hb-layer button {
+  font-family: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.hb-summary {
+  position: absolute;
+}
+
+.hb-date {
+  font: 600 20px/1.2 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  color: #1e2a3a;
+}
+
+.hb-prog {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 15px/1.2 "Jost", system-ui, sans-serif;
+  color: #3d4653;
+}
+
+.hb-prog b {
+  font-weight: 600;
+}
+
+.hb-muted {
+  color: #8b93a1;
+}
+
+.hb-bar {
+  display: inline-block;
+  width: 150px;
+  height: 7px;
+  border-radius: 4px;
+  background: #e2e6ec;
+  overflow: hidden;
+}
+
+.hb-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #2f9e5b;
+  transition: width 0.25s ease;
+}
+
+.hb-actions {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hb-icon-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d5d9df;
+  border-radius: 9px;
+  background: #e0e3e8;
+  color: #5b6472;
+}
+
+.hb-icon-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.hb-icon-btn[data-on] {
+  background: #1e2a3a;
+  border-color: #1e2a3a;
+  color: #ffffff;
+}
+
+.hb-pill-btn {
+  height: 38px;
+  padding: 0 18px;
+  border: 1px solid #1e2a3a;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 600 15px/1 "Jost", system-ui, sans-serif;
+}
+
+.hb-pill-btn:hover {
+  background: #eef1f5;
+}
+
+/* --------------------------------- Filas ---------------------------------- */
+.hb-row {
+  position: absolute;
+  display: grid;
+  align-items: center;
+}
+
+.hb-row[data-state="off"] .hb-name,
+.hb-row[data-state="off"] .hb-time,
+.hb-row[data-state="off"] .hb-num {
+  opacity: 0.45;
+}
+
+.hb-cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hb-name {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px 0 16px;
+}
+
+.hb-name-text {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 21px/1.15 "Jost", system-ui, sans-serif;
+}
+
+.hb-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  color: #8b93a1;
+}
+
+.hb-bellmini {
+  width: 12px;
+  height: 12px;
+  color: #6c7a90;
+}
+
+.hb-time {
+  font: 500 16px/1 "Jost", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #3d4653;
+}
+
+.hb-num {
+  font: 600 24px/1 "Jost", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.hb-num-best {
+  color: #6c7a90;
+}
+
+/* Botón del día (la columna más fácil de rellenar). */
+.hb-day {
+  width: 104px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed #cfd3da;
+  border-radius: 12px;
+  background: transparent;
+  color: #8b93a1;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.hb-day:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+.hb-day svg {
+  width: 26px;
+  height: 26px;
+}
+
+.hb-day:disabled {
+  cursor: default;
+}
+
+.hb-day[data-state="done"] {
+  border: 1.5px solid #2f9e5b;
+  background: #e3f4e9;
+  color: #2f9e5b;
+}
+
+.hb-day[data-state="partial"] {
+  border: 1.5px solid #d9a520;
+  background: #fbf3d6;
+  color: #d9a520;
+}
+
+.hb-day[data-state="missed"] {
+  border: 1.5px solid #c0574b;
+  background: #fbe4e0;
+  color: #c0574b;
+}
+
+/* ✗ automático: atenuado, para distinguirlo del que marcas tú. */
+.hb-day[data-state="auto-missed"] {
+  border: 1.5px dashed #dcb8b2;
+  background: transparent;
+  color: #d3a8a1;
+}
+
+.hb-day[data-state="late"] {
+  border: 1.5px solid #e6c66a;
+  background: #fdf0cc;
+  color: #8a6a12;
+}
+
+.hb-late {
+  font: 600 14px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.hb-day[data-state="future"],
+.hb-day[data-state="off"] {
+  border-color: transparent;
+  background: transparent;
+}
+
+.hb-off {
+  font: 400 12px/1 "Jost", system-ui, sans-serif;
+  color: #b0b7c3;
+}
+
+.hb-gearcell {
+  justify-content: center;
+}
+
+.hb-gear {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #6c7a90;
+}
+
+.hb-gear svg {
+  width: 26px;
+  height: 26px;
+}
+
+.hb-gear:hover {
+  background: rgba(30, 42, 58, 0.07);
+  color: #1e2a3a;
+}
+
+.hb-add {
+  position: absolute;
+  padding: 0;
+  border: 1.5px dashed #b6bcc8;
+  border-radius: 12px;
+  background: transparent;
+  color: #5b6472;
+  font: 500 16px/1 "Jost", system-ui, sans-serif;
+}
+
+.hb-add:hover {
+  background: rgba(30, 42, 58, 0.05);
+  color: #1e2a3a;
+}
+
+.hb-empty {
+  position: absolute;
+  padding: 0 16px;
+  font: 400 14px/1.4 "Jost", system-ui, sans-serif;
+  color: #8b93a1;
+}
+
+/* -------------------------------- En pausa --------------------------------- */
+.hb-pause {
+  position: absolute;
+}
+
+.hb-pause-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #d5d9df;
+  border-radius: 8px;
+  background: #f1f3f6;
+  color: #5b6472;
+  font: 500 13px/1 "Jost", system-ui, sans-serif;
+}
+
+.hb-pause-list {
+  position: absolute;
+  left: 0;
+  top: 34px;
+  z-index: 2;
+  min-width: 340px;
+  padding: 8px;
+  border: 1px solid #d5d9df;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(30, 42, 58, 0.16);
+}
+
+.hb-pause-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+}
+
+.hb-pause-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 15px/1.2 "Jost", system-ui, sans-serif;
+}
+
+.hb-mini-btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d5d9df;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 500 13px/1 "Jost", system-ui, sans-serif;
+}
+
+.hb-mini-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ----------------------- Insignia de la pestaña ----------------------------- */
+.hb-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  margin-left: 7px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #d9a520;
+  color: #ffffff;
+  font: 700 10.5px/1 "Jost", system-ui, sans-serif;
+  vertical-align: 1px;
+}
+
+/* ----------------------------- Diálogo del engrane -------------------------- */
+.hb-dlg {
+  width: min(94vw, 440px);
+  max-width: min(94vw, 440px);
+  font-family: "Jost", system-ui, sans-serif;
+}
+
+.hb-dlg-head {
+  background: #1e2a3a;
+  border-bottom: 0;
+}
+
+.hb-dlg-head strong {
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.hb-dlg-head .mm-x {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.hb-dlg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 6px;
+  overflow: auto;
+}
+
+.hb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hb-field > span {
+  font: 600 12px/1 "Jost", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b6880;
+}
+
+.hb-field input[type="text"],
+.hb-field input[type="time"] {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #cfd3da;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 400 16px/1 "Jost", system-ui, sans-serif;
+}
+
+.hb-field input:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.hb-time-row,
+.hb-days {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hb-chip {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #cfd3da;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #5b6472;
+  font: 600 14px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.hb-chip[aria-pressed="true"] {
+  background: #1e2a3a;
+  border-color: #1e2a3a;
+  color: #ffffff;
+}
+
+.hb-link {
+  border: 0;
+  background: none;
+  padding: 4px 2px;
+  color: #4b5b73;
+  font: 500 13px/1 "Jost", system-ui, sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.hb-link:disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
+}
+
+.hb-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 15px/1.3 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.hb-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #1e2a3a;
+}
+
+.hb-disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hb-hint {
+  color: #8b93a1;
+  font: 400 12.5px/1.35 "Jost", system-ui, sans-serif;
+}
+
+.hb-warn {
+  color: #8a6a12;
+}
+
+.hb-error {
+  padding: 8px 10px;
+  border: 1px solid #f0c4be;
+  border-radius: 8px;
+  background: #fbeceb;
+  color: #a3372b;
+  font: 500 13.5px/1.3 "Jost", system-ui, sans-serif;
+}
+
+.hb-dlg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 18px 16px;
+}
+
+.hb-dlg-side,
+.hb-dlg-main {
+  display: flex;
+  gap: 8px;
+}
+
+.hb-btn {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #cfd3da;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 600 14px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.hb-btn:hover {
+  background: #eef1f5;
+}
+
+.hb-btn-primary {
+  background: #1e2a3a;
+  border-color: #1e2a3a;
+  color: #ffffff;
+}
+
+.hb-btn-primary:hover {
+  background: #2a3a50;
+}
+
+.hb-btn-danger {
+  color: #a3372b;
+  border-color: #ecc9c4;
+}
+
+.hb-btn-danger.hb-armed {
+  background: #c0574b;
+  border-color: #c0574b;
+  color: #ffffff;
+}
+
+/* ------------------------------- Vista del mes ------------------------------ */
+.mv-panel {
+  width: min(96vw, 1200px);
+  max-width: min(96vw, 1200px);
+  font-family: "Jost", system-ui, sans-serif;
+}
+
+.mv-head {
+  background: #1e2a3a;
+  border-bottom: 0;
+}
+
+.mv-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mv-head .mv-title {
+  min-width: 150px;
+  text-align: center;
+  color: #ffffff;
+  font-size: 15px;
+  text-transform: capitalize;
+}
+
+.mv-navbtn {
+  width: 30px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: transparent;
+  color: #ffffff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.mv-navbtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mv-today {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #ffffff;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 600 12px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.mv-head .mm-x {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.mv-scroll {
+  overflow: auto;
+  padding: 8px 10px 4px;
+}
+
+.mv-empty {
+  margin: 30px 0;
+  text-align: center;
+  color: #8b93a1;
+  font-size: 14px;
+}
+
+.mv-table {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 12px;
+}
+
+.mv-table th,
+.mv-table td {
+  padding: 0;
+  text-align: center;
+}
+
+.mv-namecol {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 110px;
+  max-width: 170px;
+  padding: 0 10px 0 4px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left !important;
+  background: #ffffff;
+  font-weight: 500;
+  font-size: 13px;
+  color: #1e2a3a;
+}
+
+.mv-dayhead {
+  min-width: 26px;
+}
+
+.mv-daybtn {
+  width: 26px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b6880;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.mv-daybtn:hover {
+  background: #eef1f5;
+}
+
+.mv-dl {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.mv-dn {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e2a3a;
+}
+
+.mv-dayhead[data-today] .mv-daybtn {
+  background: #1e2a3a;
+  color: #cfd6e2;
+}
+
+.mv-dayhead[data-today] .mv-dn {
+  color: #ffffff;
+}
+
+.mv-dayhead[data-weekend] .mv-dl {
+  color: #a08a3a;
+}
+
+td[data-today] {
+  background: rgba(30, 42, 58, 0.05);
+  border-radius: 6px;
+}
+
+.mv-cell {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #f4f6f9;
+  color: #8b93a1;
+  cursor: pointer;
+}
+
+.mv-cell svg {
+  width: 14px;
+  height: 14px;
+}
+
+.mv-cell:disabled {
+  cursor: default;
+}
+
+.mv-cell[data-state="done"] {
+  background: #e3f4e9;
+  border-color: #2f9e5b;
+  color: #2f9e5b;
+}
+
+.mv-cell[data-state="partial"] {
+  background: #fbf3d6;
+  border-color: #d9a520;
+  color: #d9a520;
+}
+
+.mv-cell[data-state="missed"] {
+  background: #fbe4e0;
+  border-color: #c0574b;
+  color: #c0574b;
+}
+
+.mv-cell[data-state="auto-missed"] {
+  background: #fdf4f2;
+  border: 1px dashed #dcb8b2;
+  color: #d3a8a1;
+}
+
+.mv-cell[data-state="late"] {
+  background: #fdf0cc;
+  border-color: #e6c66a;
+  color: #8a6a12;
+}
+
+.mv-cell[data-state="off"],
+.mv-cell[data-state="future"] {
+  background: transparent;
+}
+
+.mv-cell[data-state="off"] {
+  background: repeating-linear-gradient(135deg, #f1f3f6 0 4px, #f8f9fb 4px 8px);
+}
+
+.mv-late {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.mv-stat {
+  min-width: 38px;
+  padding: 0 6px !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #3d4653;
+}
+
+th.mv-stat {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6b6880;
+}
+
+.mv-total {
+  height: 22px;
+  font-size: 10.5px;
+  color: #6b6880;
+  font-variant-numeric: tabular-nums;
+}
+
+.mv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid #e6e9ee;
+  font-size: 12px;
+  color: #6b6880;
+}
+
+.mv-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 5px;
+  border-radius: 4px;
+  vertical-align: -2px;
+  border: 1px solid transparent;
+}
+
+.mv-dot[data-state="done"] { background: #e3f4e9; border-color: #2f9e5b; }
+.mv-dot[data-state="partial"] { background: #fbf3d6; border-color: #d9a520; }
+.mv-dot[data-state="missed"] { background: #fbe4e0; border-color: #c0574b; }
+.mv-dot[data-state="auto-missed"] { background: #fdf4f2; border: 1px dashed #dcb8b2; }
+.mv-dot[data-state="off"] { background: repeating-linear-gradient(135deg, #e6e9ee 0 3px, #f4f6f9 3px 6px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hb-day,
+  .hb-bar-fill {
+    transition: none;
+  }
+}
+
+/* ------------------------------- Recordatorio ------------------------------- */
+.rm-dlg {
+  width: min(94vw, 400px);
+  max-width: min(94vw, 400px);
+  font-family: "Jost", system-ui, sans-serif;
+}
+
+.rm-head {
+  border-bottom: 0;
+  background: #1e2a3a;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.rm-head strong {
+  flex: 1 1 auto;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.rm-head .mm-x {
+  flex: none;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.rm-bell {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #1e2a3a;
+}
+
+.rm-bell svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rm-body {
+  padding: 14px 16px 16px;
+  color: #1e2a3a;
+}
+
+.rm-sub {
+  margin: 0 0 10px;
+  font: 400 13px/1.4 "Jost", system-ui, sans-serif;
+  color: #6b6880;
+}
+
+.rm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  border: 1px solid #dfe3ea;
+  border-radius: 10px;
+  background: #f7f8fa;
+}
+
+.rm-item-txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rm-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 17px/1.2 "Jost", system-ui, sans-serif;
+}
+
+.rm-time {
+  font: 400 12.5px/1 "Jost", system-ui, sans-serif;
+  color: #8b93a1;
+}
+
+.rm-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.rm-btn {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #cfd3da;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 600 13px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.rm-btn:hover {
+  background: #eef1f5;
+}
+
+.rm-btn-done {
+  background: #2f9e5b;
+  border-color: #2f9e5b;
+  color: #ffffff;
+}
+
+.rm-btn-done:hover {
+  background: #278a4f;
+}
