@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+import { SNOOZE_DEFAULT, normalizeSnooze } from "./habitCore";
+
 /**
  * Ajustes globales de los hábitos (en `localStorage`, como las herramientas).
  * Por ahora: el interruptor general de recordatorios (la campana), ACTIVADO por
@@ -12,6 +14,8 @@ const KEY = "journal-horas:habits:settings:v1";
 export interface HabitSettings {
   /** Interruptor general de los recordatorios (por defecto activado). */
   remindersEnabled: boolean;
+  /** Últimos minutos elegidos en "Luego" (se resalta la próxima vez). */
+  snoozeMinutes: number;
 }
 
 function load(): HabitSettings {
@@ -19,12 +23,15 @@ function load(): HabitSettings {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Partial<HabitSettings>;
-      return { remindersEnabled: p.remindersEnabled !== false };
+      return {
+        remindersEnabled: p.remindersEnabled !== false,
+        snoozeMinutes: normalizeSnooze(p.snoozeMinutes),
+      };
     }
   } catch {
     /* noop */
   }
-  return { remindersEnabled: true };
+  return { remindersEnabled: true, snoozeMinutes: SNOOZE_DEFAULT };
 }
 
 let state: HabitSettings = load();
@@ -46,6 +53,11 @@ export function getHabitSettings(): HabitSettings {
 
 export function setRemindersEnabled(on: boolean): void {
   if (state.remindersEnabled !== on) commit({ ...state, remindersEnabled: on });
+}
+
+export function setSnoozeMinutes(n: number): void {
+  const v = normalizeSnooze(n);
+  if (state.snoozeMinutes !== v) commit({ ...state, snoozeMinutes: v });
 }
 
 export function subscribeHabitSettings(cb: () => void): () => void {

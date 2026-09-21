@@ -341,17 +341,6 @@ export function Toolbar({
       <button
         type="button"
         className="tb-btn"
-        data-active={isActive("selection")}
-        title="Seleccionar · desactiva la escritura en la hoja"
-        aria-label="Seleccionar"
-        onClick={() => selectKind("selection")}
-      >
-        <KindIcon kind="selection" />
-      </button>
-
-      <button
-        type="button"
-        className="tb-btn"
         data-active={isActive("eraser")}
         title="Borrador"
         aria-label="Borrador"
@@ -361,6 +350,17 @@ export function Toolbar({
       </button>
 
       <span className="tb-sep" />
+
+      <button
+        type="button"
+        className="tb-btn"
+        data-active={isActive("selection")}
+        title="Seleccionar · desactiva la escritura en la hoja"
+        aria-label="Seleccionar"
+        onClick={() => selectKind("selection")}
+      >
+        <KindIcon kind="selection" />
+      </button>
 
       <button
         type="button"

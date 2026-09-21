@@ -219,13 +219,6 @@
   color: #c0574b;
 }
 
-/* ✗ automático: atenuado, para distinguirlo del que marcas tú. */
-.hb-day[data-state="auto-missed"] {
-  border: 1.5px dashed #dcb8b2;
-  background: transparent;
-  color: #d3a8a1;
-}
-
 .hb-day[data-state="late"] {
   border: 1.5px solid #e6c66a;
   background: #fdf0cc;
@@ -746,12 +739,6 @@ td[data-today] {
   color: #c0574b;
 }
 
-.mv-cell[data-state="auto-missed"] {
-  background: #fdf4f2;
-  border: 1px dashed #dcb8b2;
-  color: #d3a8a1;
-}
-
 .mv-cell[data-state="late"] {
   background: #fdf0cc;
   border-color: #e6c66a;
@@ -818,7 +805,6 @@ th.mv-stat {
 .mv-dot[data-state="done"] { background: #e3f4e9; border-color: #2f9e5b; }
 .mv-dot[data-state="partial"] { background: #fbf3d6; border-color: #d9a520; }
 .mv-dot[data-state="missed"] { background: #fbe4e0; border-color: #c0574b; }
-.mv-dot[data-state="auto-missed"] { background: #fdf4f2; border: 1px dashed #dcb8b2; }
 .mv-dot[data-state="off"] { background: repeating-linear-gradient(135deg, #e6e9ee 0 3px, #f4f6f9 3px 6px); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -882,6 +868,7 @@ th.mv-stat {
 
 .rm-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -940,4 +927,101 @@ th.mv-stat {
 
 .rm-btn-done:hover {
   background: #278a4f;
+}
+
+/* "Luego": elegir los minutos, dentro de la misma fila. */
+.rm-pick {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e5ea;
+}
+
+.rm-pick-lead {
+  flex: 1 0 100%;
+  font: 500 12px/1 "Jost", system-ui, sans-serif;
+  color: #6b6880;
+}
+
+.rm-chips {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rm-chip {
+  flex: 1 1 0;
+  min-width: 44px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #cfd3da;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 600 14px/1 "Jost", system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.rm-chip:hover {
+  background: #eef1f5;
+}
+
+.rm-chip[aria-pressed="true"] {
+  background: #1e2a3a;
+  border-color: #1e2a3a;
+  color: #ffffff;
+}
+
+.rm-chip-other {
+  flex: 1.4 1 0;
+  font-weight: 500;
+}
+
+.rm-custom {
+  gap: 6px;
+}
+
+.rm-custom .rm-pick-lead {
+  flex-basis: 100%;
+}
+
+.rm-input {
+  width: 64px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid #cfd3da;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e2a3a;
+  font: 600 16px/1 "Jost", system-ui, sans-serif;
+  text-align: center;
+}
+
+.rm-input:focus-visible {
+  outline: 2px solid #1e2a3a;
+  outline-offset: 1px;
+}
+
+.rm-unit {
+  font: 500 13px/1 "Jost", system-ui, sans-serif;
+  color: #6b6880;
+}
+
+.rm-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rm-range {
+  flex: 1 0 100%;
+  font: 400 11.5px/1 "Jost", system-ui, sans-serif;
+  color: #8b93a1;
+}
+
+.rm-range.rm-bad {
+  color: #c0392b;
 }

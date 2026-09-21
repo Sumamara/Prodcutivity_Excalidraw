@@ -2,7 +2,7 @@
 
 Rediseño de la pestaña **Hábitos**: de la cuadrícula manual de 31 columnas a una **hoja vertical por día** (como Time blocking), con racha, récord, hora recomendada, recordatorios y una vista de mes ("Extender").
 
-> **Estado: IMPLEMENTADO (fases F0–F5).** Comprobado con `npm test` (60 pruebas, 32 de la lógica de hábitos) y con pruebas de humo en Chrome real: hoja del día (30 comprobaciones), recordatorios (17), más las del temporizador y el cronómetro (sin regresiones).
+> **Estado: IMPLEMENTADO (fases F0–F5).** Comprobado con `npm test` (69 pruebas, 36 de la lógica de hábitos) y con pruebas de humo en Chrome real: hoja del día (30 comprobaciones), recordatorios (17), más las del temporizador y el cronómetro (sin regresiones).
 >
 > **Desviaciones respecto al plan:**
 > - Los `pausados` salen de la lista principal a una franja "En pausa" (como se acordó) y se reanudan desde ahí o desde el engrane. **Eliminar** borra el hábito y sus marcas (con confirmación en dos pasos); no hay "archivar" aparte.
@@ -13,7 +13,7 @@ Rediseño de la pestaña **Hábitos**: de la cuadrícula manual de 31 columnas a
 > - Se retiró el código de checks/toque con Mover de la hoja manual anterior (ya sin uso). Los datos antiguos de esa hoja (`global::habitos`) **no se borran**: solo se importan los nombres una vez.
 > - Sin probar: notificaciones reales del navegador (requieren permiso), Safari y Firefox.
 
-Prioridades de diseño: **velocidad** (tocar = respuesta instantánea) y **funcionamiento correcto** (rachas, ✗ automático y recordatorios sin sorpresas), con lógica pura probada.
+Prioridades de diseño: **velocidad** (tocar = respuesta instantánea) y **funcionamiento correcto** (rachas, ✗ al cierre del día y recordatorios sin sorpresas), con lógica pura probada.
 
 ---
 
@@ -28,7 +28,7 @@ Prioridades de diseño: **velocidad** (tocar = respuesta instantánea) y **funci
 | R5 | **Popup a una hora específica**: "Recuerda tu hábito" + nombre. Se puede **activar y desactivar**. |
 | R6 | Estados por toque: ✓ cumplido, **~ a medias** (amarillo), ✗ no cumplido. |
 | R7 | **~ cuenta 0,25** en porcentajes y **no rompe la racha**. |
-| R8 | Al **final del día**, lo no evaluado pasa a **✗ automático**. |
+| R8 | Al **final del día**, lo no evaluado pasa a **✗** (la misma ✗ que la marcada; se deriva, no se guarda). |
 | R9 | **Pausar** un hábito. |
 | R10 | **Fechas automáticas** (nada de escribir el número del día). |
 | R11 | **Modo Hoy**: lo más sencillo de rellenar. |
@@ -46,12 +46,12 @@ Prioridades de diseño: **velocidad** (tocar = respuesta instantánea) y **funci
 
 ## 3. Supuestos que asumo (corrígeme lo que no)
 
-1. **Sigue la fecha global** de la barra: sus flechas ◀ ▶, el selector y "Hoy" cambian el día de esta hoja igual que en las demás pestañas. La hoja pasa a ser `dateScoped`. **Días futuros: solo lectura** (no se marcan por adelantado). **Días pasados: editables** (para corregir un ✗ automático).
-2. **Cierre del día = medianoche local.** Un día pasado sin marca se muestra como **✗ automático**, con aspecto **atenuado** (contorno) para distinguirlo de un ✗ que marcaste tú. Tocarlo lo lleva a ✓.
-3. **Racha** = días **consecutivos que tocaban** con ✓ o ~. ✗ (marcado o automático) la rompe. Los días que no tocan y los de pausa **no la rompen ni suman**. Hoy pendiente **no la rompe** (aún hay tiempo).
+1. **Sigue la fecha global** de la barra: sus flechas ◀ ▶, el selector y "Hoy" cambian el día de esta hoja igual que en las demás pestañas. La hoja pasa a ser `dateScoped`. **Días futuros: solo lectura** (no se marcan por adelantado). **Días pasados: editables** (para corregir una ✗).
+2. **Cierre del día = medianoche local.** Un día pasado sin marca se muestra como **✗**, idéntica a la que marcas tú (no hay una ✗ "automática" distinta). En un día pasado el ciclo al tocar es **✓ → ~ → ✗ → ✓** (vacío ya se ve como ✗, así que no hay un paso que parezca no hacer nada); hoy sigue siendo vacío → ✓ → ~ → ✗ → vacío.
+3. **Racha** = días **consecutivos que tocaban** con ✓ o ~. ✗ (marcada o de un día pasado sin marca) la rompe. Los días que no tocan y los de pausa **no la rompen ni suman**. Hoy pendiente **no la rompe** (aún hay tiempo).
 4. **Récord ("máx")** = la racha más larga de todo el historial del hábito.
 5. **Porcentaje** = (✓ + 0,25 × ~) / días evaluados que tocaban. Hoy pendiente no cuenta como evaluado.
-6. **Recordatorio a la hora recomendada** (una sola hora por hábito). Interruptor **general** (campana) y **por hábito**. Botones del popup: **Hecho ✓**, **Luego (15 min)**, **×**.
+6. **Recordatorio a la hora recomendada** (una sola hora por hábito). Interruptor **general** (campana) y **por hábito**. Botones del popup: **Hecho ✓**, **Luego** (elige los minutos), **×**.
 7. **Cambios de días de la semana o de hora** aplican **desde hoy hacia adelante**; nunca reescriben el pasado (el calendario de cada hábito se guarda por versiones con fecha).
 8. **Pausar** saca el hábito de la lista principal a una franja **"En pausa"**, desde donde se reanuda. Los pausados no ocupan fila (no cuentan para los 12). **Eliminar** borra el hábito y sus registros (con confirmación).
 9. **Orden**: por hora recomendada (los sin hora al final), luego por creación. Sin reordenar a mano en esta versión.
@@ -91,12 +91,13 @@ Diálogo pequeño: **Nombre** · **Hora recomendada** (opcional) · **Días** (7
 
 ### 4.3 Vista del mes ("Extender")
 
-Panel sobre la hoja: **◀ septiembre 2026 ▶**, "Hoy", cerrar. Cuadrícula **hábitos × días** con fechas y letra del día **automáticas**, color por estado (✓ verde, ~ amarillo, ✗ rojo, ✗ automático atenuado, gris = no toca/pausa/anterior a la creación), **columna de hoy resaltada**, totales por día abajo y por hábito a la derecha (racha, máx, %). **Tocar una celda ≤ hoy cicla su estado** (para corregir días pasados). Tocar la cabecera de un día **salta a ese día**. Con desplazamiento horizontal en pantallas estrechas y primera columna fija.
+Panel sobre la hoja: **◀ septiembre 2026 ▶**, "Hoy", cerrar. Cuadrícula **hábitos × días** con fechas y letra del día **automáticas**, color por estado (✓ verde, ~ amarillo, ✗ rojo, gris = no toca/pausa/anterior a la creación); los hábitos **en pausa hoy van al final** de la lista, **columna de hoy resaltada**, totales por día abajo y por hábito a la derecha (racha, máx, %). **Tocar una celda ≤ hoy cicla su estado** (para corregir días pasados). Tocar la cabecera de un día **salta a ese día**. Con desplazamiento horizontal en pantallas estrechas y primera columna fija.
 
 ### 4.4 Recordatorio (popup)
 
 - A la hora del hábito, si sigue **sin marcar** ese día, el hábito **toca hoy** y **no está en pausa**: popup **"Recuerda tu hábito · {nombre}"** (si coinciden varios, una lista).
-- Botones: **Hecho ✓**, **Luego (15 min)**, **×** (descarta ese aviso del día).
+- Botones: **Hecho ✓**, **Luego**, **×** (descarta ese aviso del día).
+- **Luego** no pospone de golpe: despliega en la misma fila las fichas **5 · 10 · 15 · 30 · 60** y **Otro…** (campo numérico, 1–240 min). La última elección queda resaltada (y, si era libre, aparece como ficha extra); se guarda en los ajustes (`snoozeMinutes`). Tocar **Luego** otra vez pliega las fichas sin posponer; Escape en el campo vuelve a las fichas sin cerrar el aviso.
 - Si la pestaña está oculta y hay permiso: además, **notificación del navegador**.
 - Al abrir la app o volver a la pestaña: si hay recordatorios vencidos sin mostrar, salen **una sola vez** ("te perdiste estos recordatorios").
 - Cada aviso se muestra **como máximo una vez por hábito y día** (aunque haya varias pestañas o recargues).
@@ -120,7 +121,7 @@ interface Habit {
 }
 
 type LogState = "done" | "partial" | "missed";
-interface HabitLog {      // SOLO marcas explícitas; el ✗ automático se DERIVA
+interface HabitLog {      // SOLO marcas explícitas; la ✗ de un día pasado se DERIVA
   key: string;            // "<habitId>::<fecha>"
   habitId: string;
   date: ISODate;
@@ -131,7 +132,7 @@ interface HabitLog {      // SOLO marcas explícitas; el ✗ automático se DERI
 
 Tablas: `habits: "id, order"` y `habitLogs: "key, habitId, date"`. Ajustes globales (campana, permiso) en `localStorage` (`journal-horas:habits:settings:v1`). Registro de avisos ya mostrados en `localStorage` (`fired:<fecha>:<habitId>`).
 
-**Por qué el ✗ automático se deriva y no se guarda:** en una web no hay tarea a medianoche. Calcularlo al leer es exacto, retroactivo y sin trabajos en segundo plano; al marcar explícitamente ese día, la marca real lo sustituye.
+**Por qué la ✗ de un día pasado se deriva y no se guarda:** en una web no hay tarea a medianoche. Calcularlo al leer es exacto, retroactivo y sin trabajos en segundo plano; al marcar explícitamente ese día, la marca real lo sustituye.
 
 Estado de un hábito en un día `d` (`hoy` = fecha local, `ahora` = HH:MM):
 
@@ -140,7 +141,7 @@ marca explícita        → done | partial | missed          (explicit = true)
 d < createdOn / pausa  → "off"                            (gris, no cuenta)
 no toca ese día        → "off"
 d > hoy                → "future"                         (solo lectura)
-d < hoy                → "auto-missed"                    (✗ atenuado)
+d < hoy                → "missed"                         (✗, igual que la marcada)
 d = hoy, hora <= ahora → "late"      (Pendiente)
 d = hoy, si no         → "pending"
 ```
@@ -187,7 +188,7 @@ d = hoy, si no         → "pending"
 ## 7. Reglas de negocio (detalle)
 
 - **Calendario del hábito en un día**: activo si `d >= createdOn` y no está dentro de una pausa; toca si además el día de la semana está en la `Schedule` vigente (la de mayor `from <= d`).
-- **Racha actual**: se recorre hacia atrás desde hoy. Hoy: `done/partial` → suma; `pending/late` → se ignora; `missed` explícito → racha 0. Días anteriores: solo cuentan los que tocaban; `done/partial` suman, `missed/auto-missed` cortan; `off` se salta. Se detiene en `createdOn`.
+- **Racha actual**: se recorre hacia atrás desde hoy. Hoy: `done/partial` → suma; `pending/late` → se ignora; `missed` explícito → racha 0. Días anteriores: solo cuentan los que tocaban; `done/partial` suman, `missed` (marcada o derivada) corta; `off` se salta. Se detiene en `createdOn`.
 - **Récord**: recorrido ascendente del historial con las mismas reglas; se recalcula solo para el hábito modificado.
 - **Pausa**: se abre un `Pause{from: hoy}`; reanudar cierra con `to`. Los días de pausa son `off`.
 - **Eliminar**: borra el hábito y sus `habitLogs`.
@@ -201,7 +202,7 @@ Un commit por fase (cuando lo pidas).
 
 **F0 — Núcleo puro y pruebas** *(pequeña, sin UI)*
 `habitCore.ts` + utilidades de fecha + `tests/habitCore.test.ts`.
-*Hecho cuando:* pruebas en verde para calendario, ✗ automático, hoy pendiente/tarde, rachas (~, ✗, no toca, pausa, `createdOn`), récord, porcentaje con 0,25, cambios de calendario y `dueReminders`.
+*Hecho cuando:* pruebas en verde para calendario, ✗ derivada, hoy pendiente/tarde, rachas (~, ✗, no toca, pausa, `createdOn`), récord, porcentaje con 0,25, cambios de calendario y `dueReminders`.
 
 **F1 — Datos y tienda** *(media)*
 Dexie v5, `habitsStore` (CRUD, marcas, pausa), optimista, `BroadcastChannel`, importación única de nombres desde la hoja antigua.
@@ -234,7 +235,7 @@ Accesibilidad (etiquetas por celda), rendimiento, retirada del código de checks
 
 **Unitarias (`node:test`, sin dependencias)** — `habitCore`: todas las reglas de §7 y casos límite (cambio de mes/año, año bisiesto, hábito creado hoy, pausa que cruza días, calendario por versiones, hoy justo en la hora, `~` que continúa la racha, récord tras editar un día pasado).
 
-**Humo en Chrome real (mismo arnés que el temporizador)** — crear hábito con hora y días; tocar Hoy y ver racha/récord; día anterior con ✗ automático atenuado y corrección a ✓; día futuro solo lectura; pausar/reanudar; límite de 12; Extender (tocar celda, saltar a un día); recordatorio (hábito con hora ya pasada → popup al cargar, una sola vez; "Luego"; campana apagada → nada); dos pestañas sin avisos duplicados; sin errores de consola.
+**Humo en Chrome real (mismo arnés que el temporizador)** — crear hábito con hora y días; tocar Hoy y ver racha/récord; día anterior con ✗ y corrección a ✓; día futuro solo lectura; pausar/reanudar; límite de 12; Extender (tocar celda, saltar a un día); recordatorio (hábito con hora ya pasada → popup al cargar, una sola vez; "Luego"; campana apagada → nada); dos pestañas sin avisos duplicados; sin errores de consola.
 
 **Manual**: rendimiento con 12 hábitos y ≥ 2 años de historial (tocar sin retraso), zonas táctiles en iPad, permiso de notificaciones denegado.
 
@@ -243,7 +244,7 @@ Accesibilidad (etiquetas por celda), rendimiento, retirada del código de checks
 | Riesgo | Mitigación |
 |---|---|
 | Cambiar los días de un hábito reescribe el pasado | Calendario **versionado** con fecha; solo aplica hacia adelante. |
-| ✗ automático genera falsos fallos (hábito creado ayer, pausas) | `createdOn`, pausas y calendario del día lo excluyen; el ✗ automático se ve atenuado y se corrige con un toque. |
+| La ✗ de días pasados genera falsos fallos (hábito creado ayer, pausas) | `createdOn`, pausas y calendario del día lo excluyen; se corrige con un toque. |
 | Recordatorios duplicados (varias pestañas / recarga) | Registro `fired` en `localStorage` + candado de Web Locks cuando existe. |
 | Recordatorio en mal momento (hablando en otro popup) | Se encola si hay otro aviso abierto (p. ej. el de "Tiempo finalizado") y sale al cerrarlo. |
 | Overlay desalineado con la hoja | Constantes de geometría **compartidas** entre plantilla y capa; mismo `transform` de anclaje que las otras capas. |

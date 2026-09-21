@@ -39,20 +39,23 @@ export interface Habit {
   /** Versiones del calendario; aplica la de mayor `from <= día`. */
   schedules: Schedule[];
   pauses: Pause[];
-  /** Antes de esta fecha el hábito "no existe" (no genera ✗ automático). */
+  /** Antes de esta fecha el hábito "no existe" (no genera ✗ en el pasado). */
   createdOn: ISODate;
   /** Desempate al ordenar. */
   order: number;
   updated: number;
 }
 
-/** Marca EXPLÍCITA. El ✗ automático se deriva y nunca se guarda. */
+/**
+ * Marca EXPLÍCITA. Un día pasado sin marca se ve y cuenta como ✗ (`missed`), pero
+ * esa ✗ se deriva y no se guarda.
+ */
 export type LogState = "done" | "partial" | "missed";
 
 /**
  * Estado resuelto de un hábito en un día:
- *  - `done` / `partial` / `missed`: marcados por el usuario.
- *  - `auto-missed`: día pasado sin marca (✗ automático).
+ *  - `done` / `partial` / `missed`: marcados por el usuario; `missed` también es
+ *    lo que se ve en un día pasado sin marca (pasada la medianoche).
  *  - `late`: hoy, sin marca y la hora recomendada ya pasó ("Pendiente").
  *  - `pending`: hoy, sin marca y aún no es la hora (o no tiene hora).
  *  - `future`: día futuro (solo lectura).
@@ -60,7 +63,6 @@ export type LogState = "done" | "partial" | "missed";
  */
 export type DayState =
   | LogState
-  | "auto-missed"
   | "late"
   | "pending"
   | "future"
@@ -168,6 +170,26 @@ export function isValidTime(s: string | undefined | null): s is HHMM {
   return typeof s === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 }
 
+/** Minutos rápidos del "Luego" del recordatorio. */
+export const SNOOZE_PRESETS: readonly number[] = [5, 10, 15, 30, 60];
+export const SNOOZE_DEFAULT = 15;
+export const SNOOZE_MAX = 240;
+
+/** Entero 1–`SNOOZE_MAX` escrito por el usuario ("45", " 7 "); `null` si no vale. */
+export function parseSnoozeMinutes(text: string): number | null {
+  const t = text.trim();
+  if (!/^\d{1,3}$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1 && n <= SNOOZE_MAX ? n : null;
+}
+
+/** Valor guardado → minutos válidos (si no lo es, el predeterminado). */
+export function normalizeSnooze(n: unknown): number {
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= SNOOZE_MAX
+    ? n
+    : SNOOZE_DEFAULT;
+}
+
 /** Minutos de `a` a `b` (`b - a`); ambos `HH:MM` del mismo día. */
 export function minutesBetween(a: HHMM, b: HHMM): number {
   const [ha, ma] = a.split(":").map(Number);
@@ -216,8 +238,8 @@ export function isScheduledOn(h: Habit, d: ISODate): boolean {
 
 /**
  * Estado de un hábito en el día `d`.
- * Orden de resolución: no cuenta → marca explícita → futuro → ✗ automático →
- * hoy (pendiente / tarde).
+ * Orden de resolución: no cuenta → marca explícita → futuro → pasado sin marca
+ * (✗) → hoy (pendiente / tarde).
  */
 export function resolveState(
   h: Habit,
@@ -229,16 +251,23 @@ export function resolveState(
   if (!isScheduledOn(h, d)) return "off";
   if (log) return log;
   if (d > today) return "future";
-  if (d < today) return "auto-missed";
+  if (d < today) return "missed";
   return h.time && h.time <= nowHHMM ? "late" : "pending";
 }
 
-/** Siguiente marca al tocar: vacío → ✓ → ~ → ✗ → vacío. */
-export function nextLog(current: LogState | undefined): LogState | undefined {
+/**
+ * Siguiente marca al tocar. Hoy y días futuros: vacío → ✓ → ~ → ✗ → vacío. En un
+ * día PASADO "vacío" ya se ve como ✗, así que el ciclo es ✓ → ~ → ✗ → ✓ (sin un
+ * paso que parezca no hacer nada): la ✗ se deja sin marca guardada.
+ */
+export function nextLog(
+  current: LogState | undefined,
+  past = false,
+): LogState | undefined {
   if (current === undefined) return "done";
   if (current === "done") return "partial";
-  if (current === "partial") return "missed";
-  return undefined;
+  if (current === "partial") return past ? undefined : "missed";
+  return past ? "done" : undefined;
 }
 
 /** ¿Cuenta como día "cumplido" para la racha? (✓ y ~). */
@@ -258,7 +287,7 @@ export interface Streaks {
 /**
  * Racha actual y récord (una sola pasada ascendente desde `createdOn`).
  *  - Solo cuentan los días que tocaban; los que no tocan y las pausas se saltan.
- *  - ✓ y ~ suman; ✗ (marcado o automático) corta.
+ *  - ✓ y ~ suman; ✗ (marcado o de un día pasado sin marca) corta.
  *  - Hoy sin marcar (pendiente/tarde) no corta ni suma.
  */
 export function streaks(h: Habit, logs: LogMap, today: ISODate): Streaks {
@@ -277,7 +306,7 @@ export function streaks(h: Habit, logs: LogMap, today: ISODate): Streaks {
       }
       continue;
     }
-    if (d < today) run = 0; // ✗ automático
+    if (d < today) run = 0; // día pasado sin marca = ✗
     // hoy sin marca: ni suma ni corta
   }
   return { current: run, best };
@@ -288,8 +317,8 @@ export function streaks(h: Habit, logs: LogMap, today: ISODate): Streaks {
 export interface Completion {
   done: number;
   partial: number;
+  /** ✗: marcadas y días pasados sin marca. */
   missed: number;
-  autoMissed: number;
   /** Días evaluados que tocaban (excluye hoy pendiente/tarde y el futuro). */
   evaluated: number;
   /** (✓ + 0,25 × ~) / evaluados, o `null` si no hay días evaluados. */
@@ -307,20 +336,18 @@ export function completion(
   let done = 0;
   let partial = 0;
   let missed = 0;
-  let autoMissed = 0;
   const end = to < today ? to : today;
   for (let d = from; d <= end; d = addDays(d, 1)) {
     if (!isScheduledOn(h, d)) continue;
     const log = logs.get(d);
     if (log === "done") done++;
     else if (log === "partial") partial++;
-    else if (log === "missed") missed++;
-    else if (d < today) autoMissed++;
+    else if (log === "missed" || d < today) missed++;
     // hoy sin marca: aún no se evalúa
   }
-  const evaluated = done + partial + missed + autoMissed;
+  const evaluated = done + partial + missed;
   const pct = evaluated ? (done + PARTIAL_WEIGHT * partial) / evaluated : null;
-  return { done, partial, missed, autoMissed, evaluated, pct };
+  return { done, partial, missed, evaluated, pct };
 }
 
 export interface DayProgress {
@@ -367,6 +394,14 @@ export function sortHabits(habits: readonly Habit[]): Habit[] {
     if (a.order !== b.order) return a.order - b.order;
     return a.createdOn < b.createdOn ? -1 : a.createdOn > b.createdOn ? 1 : 0;
   });
+}
+
+/** Como `habits` pero con los pausados hoy al final (orden estable). */
+export function pausedLast(habits: readonly Habit[], today: ISODate): Habit[] {
+  return [
+    ...habits.filter((h) => !isPausedOn(h, today)),
+    ...habits.filter((h) => isPausedOn(h, today)),
+  ];
 }
 
 /** ¿Está en pausa AHORA (hoy)? */

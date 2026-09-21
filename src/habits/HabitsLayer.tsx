@@ -49,7 +49,6 @@ const STATE_LABEL: Record<DayState, string> = {
   done: "cumplido",
   partial: "a medias",
   missed: "no cumplido",
-  "auto-missed": "no cumplido (automático)",
   late: "pendiente",
   pending: "sin marcar",
   future: "día futuro",
@@ -117,7 +116,7 @@ export function HabitsLayer({ date, onDateChange }: Props) {
 
   const canAdd = activeToday < MAX_ACTIVE;
   const pct = progress.pct === null ? null : Math.round(progress.pct * 100);
-  const [gx0] = HB.cols.gear;
+  const nameR = HB.cols.name[1];
   const rowStyle = (i: number) => ({
     left: HB.L,
     top: HB.ROW_T + i * HB.ROW_H,
@@ -208,9 +207,9 @@ export function HabitsLayer({ date, onDateChange }: Props) {
           className="hb-add"
           style={{
             left: HB.L + 10,
-            top: HB.ROW_T + rows.length * HB.ROW_H + 9,
-            width: gx0 - HB.L - 10,
-            height: HB.ROW_H - 18,
+            top: HB.ROW_T + rows.length * HB.ROW_H + 10,
+            width: nameR - HB.L - 20,
+            height: HB.ROW_H - 20,
           }}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setDialog({ mode: "create" })}
@@ -389,7 +388,6 @@ function StateGlyph({ state }: { state: DayState }) {
         </svg>
       );
     case "missed":
-    case "auto-missed":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />

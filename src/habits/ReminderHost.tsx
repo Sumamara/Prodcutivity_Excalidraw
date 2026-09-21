@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useTimeUp } from "../timer/timerStore";
+import { SNOOZE_MAX, SNOOZE_PRESETS, parseSnoozeMinutes } from "./habitCore";
+import { useHabitSettings } from "./habitSettings";
 import { useHabitsSnapshot } from "./habitsStore";
 import {
-  SNOOZE_MINUTES,
   completeFromReminder,
   dismissReminder,
   snoozeFromReminder,
@@ -91,34 +92,133 @@ function ReminderDialog({
             <p className="rm-sub">Se te pasó la hora de:</p>
           )}
           {habits.map((h) => (
-            <div className="rm-item" key={h.id}>
-              <div className="rm-item-txt">
-                <span className="rm-name" title={h.name}>
-                  {h.name}
-                </span>
-                {h.time && <span className="rm-time">{h.time}</span>}
-              </div>
-              <div className="rm-actions">
-                <button
-                  type="button"
-                  className="rm-btn"
-                  title={`Recordar en ${SNOOZE_MINUTES} minutos`}
-                  onClick={() => snoozeFromReminder(h.id)}
-                >
-                  Luego
-                </button>
-                <button
-                  type="button"
-                  className="rm-btn rm-btn-done"
-                  onClick={() => completeFromReminder(h.id)}
-                >
-                  Hecho ✓
-                </button>
-              </div>
-            </div>
+            <ReminderItem key={h.id} habit={h} />
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Una fila del aviso. "Luego" no pospone de golpe: despliega los minutos (fichas
+ * rápidas + "Otro" con un campo numérico). La última elección queda resaltada.
+ */
+function ReminderItem({ habit }: { habit: { id: string; name: string; time?: string } }) {
+  const { snoozeMinutes: last } = useHabitSettings();
+  const [mode, setMode] = useState<"idle" | "pick" | "custom">("idle");
+  const [text, setText] = useState("");
+  const custom = parseSnoozeMinutes(text);
+  const lastIsCustom = !SNOOZE_PRESETS.includes(last);
+
+  const snooze = (m: number) => snoozeFromReminder(habit.id, m);
+
+  return (
+    <div className="rm-item">
+      <div className="rm-item-txt">
+        <span className="rm-name" title={habit.name}>
+          {habit.name}
+        </span>
+        {habit.time && <span className="rm-time">{habit.time}</span>}
+      </div>
+      <div className="rm-actions">
+        <button
+          type="button"
+          className="rm-btn"
+          aria-expanded={mode !== "idle"}
+          title="Elegir en cuántos minutos recordar"
+          onClick={() => setMode((m) => (m === "idle" ? "pick" : "idle"))}
+        >
+          Luego
+        </button>
+        <button
+          type="button"
+          className="rm-btn rm-btn-done"
+          onClick={() => completeFromReminder(habit.id)}
+        >
+          Hecho ✓
+        </button>
+      </div>
+
+      {mode === "pick" && (
+        <div className="rm-pick" role="group" aria-label="Recordar en cuántos minutos">
+          <span className="rm-pick-lead">Recordar en (min)</span>
+          <div className="rm-chips">
+            {SNOOZE_PRESETS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                className="rm-chip"
+                aria-pressed={m === last}
+                onClick={() => snooze(m)}
+              >
+                {m}
+              </button>
+            ))}
+            {lastIsCustom && (
+              <button
+                type="button"
+                className="rm-chip"
+                aria-pressed="true"
+                onClick={() => snooze(last)}
+              >
+                {last}
+              </button>
+            )}
+            <button
+              type="button"
+              className="rm-chip rm-chip-other"
+              onClick={() => {
+                setText(lastIsCustom ? String(last) : "");
+                setMode("custom");
+              }}
+            >
+              Otro…
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === "custom" && (
+        <form
+          className="rm-pick rm-custom"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (custom !== null) snooze(custom);
+          }}
+        >
+          <span className="rm-pick-lead">Recordar en</span>
+          <input
+            className="rm-input"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={3}
+            autoFocus
+            value={text}
+            placeholder="min"
+            aria-label={`Minutos (1 a ${SNOOZE_MAX})`}
+            onChange={(e) => setText(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                // Solo cierra el campo, no todo el aviso.
+                e.nativeEvent.stopPropagation();
+                setMode("pick");
+              }
+            }}
+          />
+          <span className="rm-unit">min</span>
+          <button type="submit" className="rm-btn rm-btn-done" disabled={custom === null}>
+            OK
+          </button>
+          <button type="button" className="rm-btn" onClick={() => setMode("pick")}>
+            Atrás
+          </button>
+          <span className={`rm-range${text && custom === null ? " rm-bad" : ""}`}>
+            1 a {SNOOZE_MAX}
+          </span>
+        </form>
+      )}
     </div>
   );
 }

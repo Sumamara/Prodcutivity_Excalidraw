@@ -10,7 +10,12 @@ import {
   createHabit,
   dayProgress,
   daysInMonth,
+  SNOOZE_DEFAULT,
+  SNOOZE_MAX,
+  SNOOZE_PRESETS,
   dueReminders,
+  normalizeSnooze,
+  parseSnoozeMinutes,
   effectiveFired,
   isActiveOn,
   isPausedOn,
@@ -24,6 +29,7 @@ import {
   nextLog,
   normalizeDays,
   pausedHabits,
+  pausedLast,
   resolveState,
   sanitizeName,
   scheduleFor,
@@ -149,8 +155,8 @@ test("resolveState: orden de resolución", () => {
   assert.equal(resolveState(h, "2026-09-10", "done", today, "12:00"), "done");
   assert.equal(resolveState(h, "2026-09-10", "partial", today, "12:00"), "partial");
   assert.equal(resolveState(h, "2026-09-10", "missed", today, "12:00"), "missed");
-  // día pasado sin marca → ✗ automático
-  assert.equal(resolveState(h, "2026-09-10", undefined, today, "12:00"), "auto-missed");
+  // día pasado sin marca → ✗ (igual que una ✗ marcada)
+  assert.equal(resolveState(h, "2026-09-10", undefined, today, "12:00"), "missed");
   // futuro
   assert.equal(resolveState(h, "2026-09-25", undefined, today, "12:00"), "future");
   // hoy: antes / en / después de la hora
@@ -173,7 +179,7 @@ test("resolveState: hábito que no toca ese día o en pausa es 'off'", () => {
   });
   assert.equal(resolveState(h, "2026-09-22", undefined, "2026-09-25", "12:00"), "off"); // martes
   assert.equal(resolveState(h, "2026-09-14", undefined, "2026-09-25", "12:00"), "off"); // lunes en pausa
-  assert.equal(resolveState(h, "2026-09-21", undefined, "2026-09-25", "12:00"), "auto-missed"); // lunes activo
+  assert.equal(resolveState(h, "2026-09-21", undefined, "2026-09-25", "12:00"), "missed"); // lunes activo
 });
 
 test("nextLog: vacío → ✓ → ~ → ✗ → vacío", () => {
@@ -181,6 +187,13 @@ test("nextLog: vacío → ✓ → ~ → ✗ → vacío", () => {
   assert.equal(nextLog("done"), "partial");
   assert.equal(nextLog("partial"), "missed");
   assert.equal(nextLog("missed"), undefined);
+});
+
+test("nextLog en un día pasado: ✓ → ~ → ✗ → ✓ (vacío ya se ve como ✗)", () => {
+  assert.equal(nextLog(undefined, true), "done");
+  assert.equal(nextLog("done", true), "partial");
+  assert.equal(nextLog("partial", true), undefined); // sin marca = ✗ visible
+  assert.equal(nextLog("missed", true), "done"); // ✗ guardada antes: no queda un paso muerto
 });
 
 /* ---------------------------------- rachas --------------------------------- */
@@ -278,13 +291,12 @@ test("completion: ~ vale 0,25 y hoy pendiente no se evalúa", () => {
     "2026-09-02": "done",
     "2026-09-03": "partial",
     "2026-09-04": "missed",
-    // 05: sin marca (auto ✗)
+    // 05: sin marca (día pasado = ✗)
   });
   const c = completion(h, l, "2026-09-01", "2026-09-30", "2026-09-06"); // hoy = 06 sin marca
   assert.equal(c.done, 2);
   assert.equal(c.partial, 1);
-  assert.equal(c.missed, 1);
-  assert.equal(c.autoMissed, 1);
+  assert.equal(c.missed, 2); // la ✗ marcada y el día pasado sin marca
   assert.equal(c.evaluated, 5);
   assert.equal(c.pct, (2 + 0.25) / 5);
 });
@@ -441,4 +453,34 @@ test("effectiveFired: cambiar la hora del hábito rearma el aviso", () => {
   // quitar la hora también lo rearma (time undefined ≠ "07:00")
   const noTime = mk({ id: "a", time: undefined, remind: false });
   assert.equal(effectiveFired([noTime], ["a"], { a: "07:00" }).has("a"), false);
+});
+
+test("parseSnoozeMinutes: enteros de 1 a 240, nada más", () => {
+  assert.equal(parseSnoozeMinutes("45"), 45);
+  assert.equal(parseSnoozeMinutes(" 7 "), 7);
+  assert.equal(parseSnoozeMinutes("1"), 1);
+  assert.equal(parseSnoozeMinutes(String(SNOOZE_MAX)), SNOOZE_MAX);
+  for (const bad of ["", "0", "241", "-5", "1.5", "1,5", "abc", "12m", "1000", "٣"]) {
+    assert.equal(parseSnoozeMinutes(bad), null, bad);
+  }
+});
+
+test("normalizeSnooze: lo inválido vuelve al predeterminado", () => {
+  assert.equal(normalizeSnooze(30), 30);
+  for (const bad of [0, -1, 241, 2.5, NaN, "15", null, undefined]) {
+    assert.equal(normalizeSnooze(bad), SNOOZE_DEFAULT);
+  }
+  assert.ok(SNOOZE_PRESETS.includes(SNOOZE_DEFAULT));
+});
+
+test("pausedLast: los pausados hoy van al final, sin alterar el orden relativo", () => {
+  const today = "2026-09-20";
+  const a = mk({ id: "a", time: "07:00" });
+  const b = mk({ id: "b", time: "08:00", pauses: [{ from: "2026-09-01" }] });
+  const c = mk({ id: "c", time: "09:00" });
+  const d = mk({ id: "d", time: "10:00", pauses: [{ from: "2026-09-01" }] });
+  assert.deepEqual(pausedLast([a, b, c, d], today).map((h) => h.id), ["a", "c", "b", "d"]);
+  // una pausa ya terminada no cuenta
+  const e = mk({ id: "e", time: "06:00", pauses: [{ from: "2026-08-01", to: "2026-08-10" }] });
+  assert.deepEqual(pausedLast([e, b], today).map((h) => h.id), ["e", "b"]);
 });

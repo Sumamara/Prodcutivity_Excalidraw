@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import {
+  SNOOZE_DEFAULT,
   dueReminders,
   effectiveFired,
   minutesBetween,
@@ -9,6 +10,7 @@ import {
 import {
   getHabitSettings,
   setRemindersEnabled,
+  setSnoozeMinutes,
   subscribeHabitSettings,
 } from "./habitSettings";
 import {
@@ -31,12 +33,12 @@ import { readMinuteNow } from "./minute";
  * Reglas:
  *  - Un aviso por hábito y día como máximo (registro `fired` en localStorage, que
  *    comparten todas las pestañas) + un candado (Web Locks) para no duplicar.
- *  - "Luego" lo pospone 15 minutos; "×" lo descarta por hoy.
+ *  - "Luego" deja elegir cuántos minutos (5/10/15/30/60 o cualquiera de 1 a 240);
+ *    "×" lo descarta por hoy.
  *  - Al abrir la app o volver a la pestaña, los vencidos sin mostrar salen UNA vez
  *    ("Se te pasó la hora").
  */
 
-export const SNOOZE_MINUTES = 15;
 /** Un aviso con más de estos minutos de retraso se considera "se te pasó". */
 const ON_TIME_MINUTES = 2;
 
@@ -122,13 +124,21 @@ export function completeFromReminder(habitId: string): void {
   removeFromInfo(habitId);
 }
 
-/** "Luego": vuelve a avisar en 15 minutos (si sigue sin marcar). */
-export function snoozeFromReminder(habitId: string): void {
+/**
+ * "Luego": vuelve a avisar dentro de `minutes` (si sigue sin marcar). Recuerda la
+ * elección para resaltarla la próxima vez.
+ */
+export function snoozeFromReminder(
+  habitId: string,
+  minutes: number = SNOOZE_DEFAULT,
+): void {
+  const mins = Math.max(1, Math.round(minutes));
+  setSnoozeMinutes(mins);
   const { today } = readMinuteNow();
   const st = loadFired(today);
   st.ids = st.ids.filter((id) => id !== habitId);
   delete st.times[habitId];
-  st.snooze[habitId] = Date.now() + SNOOZE_MINUTES * 60_000;
+  st.snooze[habitId] = Date.now() + mins * 60_000;
   saveFired(st);
   removeFromInfo(habitId);
 }

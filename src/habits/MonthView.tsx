@@ -10,6 +10,7 @@ import {
   monthLabel,
   monthStart,
   parseISO,
+  pausedLast,
   resolveState,
   sortHabits,
   streaks,
@@ -29,7 +30,6 @@ const STATE_LABEL: Record<DayState, string> = {
   done: "cumplido",
   partial: "a medias",
   missed: "no cumplido",
-  "auto-missed": "no cumplido (automático)",
   late: "pendiente",
   pending: "sin marcar",
   future: "día futuro",
@@ -67,9 +67,10 @@ export default function MonthView({
   const last = days[days.length - 1];
 
   // Hábitos que existían durante ese mes.
+  // Los hábitos en pausa (hoy) van al final de la lista.
   const habits = useMemo(
-    () => sortHabits(snap.habits.filter((h) => h.createdOn <= last)),
-    [snap.v, last],
+    () => pausedLast(sortHabits(snap.habits.filter((h) => h.createdOn <= last)), today),
+    [snap.v, last, today],
   );
 
   const stats = useMemo(() => {
@@ -213,7 +214,6 @@ export default function MonthView({
           <span><i className="mv-dot" data-state="done" /> cumplido</span>
           <span><i className="mv-dot" data-state="partial" /> a medias</span>
           <span><i className="mv-dot" data-state="missed" /> no cumplido</span>
-          <span><i className="mv-dot" data-state="auto-missed" /> automático</span>
           <span><i className="mv-dot" data-state="off" /> no toca</span>
         </div>
       </div>
@@ -237,7 +237,6 @@ function Glyph({ state }: { state: DayState }) {
         </svg>
       );
     case "missed":
-    case "auto-missed":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

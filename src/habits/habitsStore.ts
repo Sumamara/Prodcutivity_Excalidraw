@@ -38,7 +38,7 @@ import {
  *   escritura a IndexedDB va después (una fila `put`/`delete`).
  * - Varias pestañas: cada cambio se avisa por BroadcastChannel y las demás
  *   releen solo lo afectado.
- * - El ✗ automático no se guarda: se deriva (ver `habitCore.resolveState`).
+ * - La ✗ de un día pasado sin marca no se guarda: se deriva (ver `habitCore.resolveState`).
  */
 
 export interface HabitsSnapshot {
@@ -219,7 +219,8 @@ export function setLog(habitId: string, date: ISODate, value: LogState | undefin
 
 /** Toque: vacío → ✓ → ~ → ✗ → vacío. */
 export function cycleLog(habitId: string, date: ISODate): boolean {
-  return setLog(habitId, date, nextLog(state.logs.get(habitId)?.get(date)));
+  const past = date < todayISO();
+  return setLog(habitId, date, nextLog(state.logs.get(habitId)?.get(date), past));
 }
 
 /** Aplica una marca en memoria (sin persistir). */

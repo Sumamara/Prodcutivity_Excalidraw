@@ -80,7 +80,7 @@ export const HABITOS_HOTSPOTS: Hotspot[] = [
     w: HB.cols.day[1] - HB.cols.day[0],
     h: HB.HEAD_H,
     title: "Día",
-    body: "Toca para marcar el día: ✓ cumplido, ~ a medias, ✗ no cumplido, y otro toque para dejarlo vacío. Si termina el día sin marcar, queda como ✗ automático (atenuado).",
+    body: "Toca para marcar el día: ✓ cumplido, ~ a medias, ✗ no cumplido, y otro toque para dejarlo vacío. Si termina el día sin marcar, queda como ✗.",
   },
   {
     id: "hb-racha",
