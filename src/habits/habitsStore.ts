@@ -19,6 +19,7 @@ import {
   isScheduledOn,
   isValidTime,
   nextLog,
+  sanitizeDescription,
   sanitizeName,
   withDays,
   withPaused,
@@ -116,6 +117,8 @@ function newId(): string {
 export interface HabitInput {
   name: string;
   time?: string | null;
+  /** `""`/`null` la quita. */
+  description?: string | null;
   days?: readonly number[];
   remind?: boolean;
 }
@@ -134,6 +137,7 @@ export function addHabit(input: HabitInput): Habit | null {
     id: newId(),
     name,
     time: input.time && isValidTime(input.time) ? input.time : undefined,
+    description: input.description ?? undefined,
     days: input.days,
     remind: input.remind,
     today: todayISO(),
@@ -162,6 +166,11 @@ export function updateHabit(id: string, patch: HabitInput): Habit | null {
   }
   if (patch.time !== undefined) {
     next.time = patch.time && isValidTime(patch.time) ? patch.time : undefined;
+  }
+  if (patch.description !== undefined) {
+    const d = sanitizeDescription(patch.description ?? "");
+    if (d) next.description = d;
+    else delete next.description;
   }
   if (patch.remind !== undefined) next.remind = patch.remind;
   if (!next.time) next.remind = false; // sin hora no hay recordatorio

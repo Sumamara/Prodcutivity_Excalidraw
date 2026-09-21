@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 
 import { useTimeUp } from "../timer/timerStore";
 import { SNOOZE_MAX, SNOOZE_PRESETS, parseSnoozeMinutes } from "./habitCore";
+import { DescriptionText, InfoIcon } from "./HabitInfo";
 import { useHabitSettings } from "./habitSettings";
 import { useHabitsSnapshot } from "./habitsStore";
 import {
@@ -44,7 +45,7 @@ function ReminderDialog({
   habits,
 }: {
   kind: "due" | "missed";
-  habits: { id: string; name: string; time?: string }[];
+  habits: { id: string; name: string; time?: string; description?: string }[];
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -104,10 +105,15 @@ function ReminderDialog({
  * Una fila del aviso. "Luego" no pospone de golpe: despliega los minutos (fichas
  * rápidas + "Otro" con un campo numérico). La última elección queda resaltada.
  */
-function ReminderItem({ habit }: { habit: { id: string; name: string; time?: string } }) {
+function ReminderItem({
+  habit,
+}: {
+  habit: { id: string; name: string; time?: string; description?: string };
+}) {
   const { snoozeMinutes: last } = useHabitSettings();
   const [mode, setMode] = useState<"idle" | "pick" | "custom">("idle");
   const [text, setText] = useState("");
+  const [infoOpen, setInfoOpen] = useState(false);
   const custom = parseSnoozeMinutes(text);
   const lastIsCustom = !SNOOZE_PRESETS.includes(last);
 
@@ -116,8 +122,22 @@ function ReminderItem({ habit }: { habit: { id: string; name: string; time?: str
   return (
     <div className="rm-item">
       <div className="rm-item-txt">
-        <span className="rm-name" title={habit.name}>
-          {habit.name}
+        <span className="rm-name-row">
+          <span className="rm-name" title={habit.name}>
+            {habit.name}
+          </span>
+          {habit.description && (
+            <button
+              type="button"
+              className="rm-info"
+              aria-label={`Descripción de ${habit.name}`}
+              aria-expanded={infoOpen}
+              title="Ver la descripción"
+              onClick={() => setInfoOpen((o) => !o)}
+            >
+              <InfoIcon />
+            </button>
+          )}
         </span>
         {habit.time && <span className="rm-time">{habit.time}</span>}
       </div>
@@ -139,6 +159,12 @@ function ReminderItem({ habit }: { habit: { id: string; name: string; time?: str
           Hecho ✓
         </button>
       </div>
+
+      {infoOpen && habit.description && (
+        <div className="rm-desc">
+          <DescriptionText text={habit.description} />
+        </div>
+      )}
 
       {mode === "pick" && (
         <div className="rm-pick" role="group" aria-label="Recordar en cuántos minutos">

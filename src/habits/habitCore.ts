@@ -35,6 +35,8 @@ export interface Habit {
   name: string;
   /** Hora recomendada (y del recordatorio). */
   time?: HHMM;
+  /** Descripción libre (p. ej. Propósito / Versión mínima / Versión completa). */
+  description?: string;
   remind: boolean;
   /** Versiones del calendario; aplica la de mayor `from <= día`. */
   schedules: Schedule[];
@@ -78,6 +80,7 @@ export const MAX_ACTIVE = 12;
 /** Peso de "a medias" en los porcentajes. */
 export const PARTIAL_WEIGHT = 0.25;
 export const NAME_MAX = 40;
+export const DESC_MAX = 400;
 export const ALL_DAYS: readonly number[] = [0, 1, 2, 3, 4, 5, 6];
 export const WEEKDAY_LETTERS: readonly string[] = ["L", "M", "X", "J", "V", "S", "D"];
 export const WEEKDAY_NAMES: readonly string[] = [
@@ -385,6 +388,53 @@ export function sanitizeName(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().slice(0, NAME_MAX);
 }
 
+/**
+ * Descripción: conserva los saltos de línea (una parte por línea), limpia los
+ * espacios, deja como mucho una línea en blanco seguida y recorta a `DESC_MAX`.
+ * Vacío = sin descripción.
+ */
+export function sanitizeDescription(raw: string): string {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, DESC_MAX)
+    .trim();
+}
+
+export interface DescPart {
+  /** Etiqueta reconocida al inicio de la línea (Propósito, Versión mínima/completa). */
+  label?: string;
+  text: string;
+}
+
+const DESC_LABELS: readonly [RegExp, string][] = [
+  [/^prop[oó]sito$/i, "Propósito"],
+  [/^versi[oó]n m[ií]nima$/i, "Versión mínima"],
+  [/^versi[oó]n completa$/i, "Versión completa"],
+];
+
+/**
+ * Parte la descripción en líneas para mostrarla; las que empiezan por
+ * "Propósito:", "Versión mínima:" o "Versión completa:" llevan su etiqueta aparte.
+ * Las líneas vacías se omiten.
+ */
+export function parseDescription(text: string): DescPart[] {
+  const out: DescPart[] = [];
+  for (const line of text.split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    const m = /^([^:：\-–—]{1,20}?)\s*[:：\-–—]\s*(.*)$/.exec(t);
+    const hit = m ? DESC_LABELS.find(([re]) => re.test(m[1].trim())) : undefined;
+    if (m && hit) out.push({ label: hit[1], text: m[2].trim() });
+    else out.push({ text: t });
+  }
+  return out;
+}
+
 /** Orden en pantalla: por hora (los sin hora al final), luego `order`, luego creación. */
 export function sortHabits(habits: readonly Habit[]): Habit[] {
   return [...habits].sort((a, b) => {
@@ -422,6 +472,7 @@ export function createHabit(args: {
   id: string;
   name: string;
   time?: HHMM;
+  description?: string;
   days?: readonly number[];
   remind?: boolean;
   today: ISODate;
@@ -429,10 +480,12 @@ export function createHabit(args: {
   now: number;
 }): Habit {
   const time = isValidTime(args.time) ? args.time : undefined;
+  const description = sanitizeDescription(args.description ?? "");
   return {
     id: args.id,
     name: sanitizeName(args.name),
     time,
+    ...(description ? { description } : {}),
     remind: !!args.remind && !!time,
     schedules: [{ from: args.today, days: normalizeDays(args.days) }],
     pauses: [],

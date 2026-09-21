@@ -2,7 +2,7 @@
 
 Rediseño de la pestaña **Hábitos**: de la cuadrícula manual de 31 columnas a una **hoja vertical por día** (como Time blocking), con racha, récord, hora recomendada, recordatorios y una vista de mes ("Extender").
 
-> **Estado: IMPLEMENTADO (fases F0–F5).** Comprobado con `npm test` (69 pruebas, 36 de la lógica de hábitos) y con pruebas de humo en Chrome real: hoja del día (30 comprobaciones), recordatorios (17), más las del temporizador y el cronómetro (sin regresiones).
+> **Estado: IMPLEMENTADO (fases F0–F5).** Comprobado con `npm test` (72 pruebas, 39 de la lógica de hábitos) y con pruebas de humo en Chrome real: hoja del día (30 comprobaciones), recordatorios (17), más las del temporizador y el cronómetro (sin regresiones).
 >
 > **Desviaciones respecto al plan:**
 > - Los `pausados` salen de la lista principal a una franja "En pausa" (como se acordó) y se reanudan desde ahí o desde el engrane. **Eliminar** borra el hábito y sus marcas (con confirmación en dos pasos); no hay "archivar" aparte.
@@ -93,6 +93,14 @@ Diálogo pequeño: **Nombre** · **Hora recomendada** (opcional) · **Días** (7
 
 Panel sobre la hoja: **◀ septiembre 2026 ▶**, "Hoy", cerrar. Cuadrícula **hábitos × días** con fechas y letra del día **automáticas**, color por estado (✓ verde, ~ amarillo, ✗ rojo, gris = no toca/pausa/anterior a la creación); los hábitos **en pausa hoy van al final** de la lista, **columna de hoy resaltada**, totales por día abajo y por hábito a la derecha (racha, máx, %). **Tocar una celda ≤ hoy cicla su estado** (para corregir días pasados). Tocar la cabecera de un día **salta a ese día**. Con desplazamiento horizontal en pantallas estrechas y primera columna fija.
 
+### 4.3b Descripción del hábito
+
+- Campo **opcional** "Descripción" en el engrane (texto de varias líneas, máx. **400** caracteres, contador). El texto gris guía es: *Propósito: por qué lo hago / Versión mínima: lo mínimo en un mal día / Versión completa: cómo se ve hecho del todo*. Vaciar el campo la elimina. Sin migración (campo opcional).
+- **Hoja:** el nombre es un botón; al tocarlo sale un **popover** con la descripción (o "Sin descripción todavía" + "Añadir descripción", que abre el engrane). Los hábitos con descripción muestran una **ⓘ** junto al nombre. Tocar de nuevo, tocar fuera, Escape, zoom o girar lo cierra.
+- **Extender:** los hábitos con descripción tienen el nombre tocable (ⓘ) y muestran el mismo popover (sin botón de editar). Escape cierra solo el popover.
+- **Recordatorio:** los hábitos con descripción llevan una **ⓘ**; al tocarla se despliega la descripción dentro de la fila (otro toque la oculta).
+- Las líneas que empiezan por "Propósito:", "Versión mínima:" o "Versión completa:" se muestran con la etiqueta en negrita (`parseDescription`); el resto, como texto normal.
+
 ### 4.4 Recordatorio (popup)
 
 - A la hora del hábito, si sigue **sin marcar** ese día, el hábito **toca hoy** y **no está en pausa**: popup **"Recuerda tu hábito · {nombre}"** (si coinciden varios, una lista).
@@ -112,6 +120,7 @@ interface Habit {
   id: string;             // uuid
   name: string;           // ≤ 40 caracteres
   time?: "HH:MM";         // hora recomendada (también la del recordatorio)
+  description?: string;   // opcional, hasta 400 caracteres (Propósito / Versión mínima / Versión completa)
   remind: boolean;        // recordatorio de este hábito
   schedules: Schedule[];  // versiones con fecha; aplica la de mayor `from` <= día
   pauses: Pause[];

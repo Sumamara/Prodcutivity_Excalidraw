@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { todayISO } from "../dates";
 import {
   ALL_DAYS,
+  DESC_MAX,
   MAX_ACTIVE,
   NAME_MAX,
   WEEKDAY_LETTERS,
@@ -25,6 +26,10 @@ import {
 import "../canvas/MoodMeter.css"; // reutiliza el modal (.mm-backdrop/.mm-panel/…)
 import "./Habits.css";
 
+/** Guía en gris del campo: qué escribir. */
+const DESC_PLACEHOLDER =
+  "Propósito: por qué lo hago\nVersión mínima: lo mínimo en un mal día\nVersión completa: cómo se ve hecho del todo";
+
 type Target = { mode: "create" } | { mode: "edit"; id: string };
 
 /**
@@ -44,6 +49,7 @@ export default function HabitDialog({
 
   const [name, setName] = useState(editing?.name ?? "");
   const [time, setTime] = useState(editing?.time ?? "");
+  const [description, setDescription] = useState(editing?.description ?? "");
   const [days, setDays] = useState<number[]>(() =>
     editing ? [...(scheduleFor(editing, today) ?? ALL_DAYS)] : [...ALL_DAYS],
   );
@@ -97,11 +103,11 @@ export default function HabitDialog({
     // de notificaciones del navegador (si se deniega, quedan los popups de la app).
     if (wantRemind) requestNotificationPermission();
     if (editing) {
-      if (!updateHabit(editing.id, { name: n, time: t, days, remind: wantRemind })) {
+      if (!updateHabit(editing.id, { name: n, time: t, description, days, remind: wantRemind })) {
         setError("No se pudo guardar.");
         return;
       }
-    } else if (!addHabit({ name: n, time: t, days, remind: wantRemind })) {
+    } else if (!addHabit({ name: n, time: t, description, days, remind: wantRemind })) {
       setError(`Ya hay ${MAX_ACTIVE} hábitos activos. Pausa o elimina uno.`);
       return;
     }
@@ -160,6 +166,21 @@ export default function HabitDialog({
                 setError(null);
               }}
             />
+          </label>
+
+          <label className="hb-field">
+            <span>Descripción (opcional)</span>
+            <textarea
+              className="hb-desc-input"
+              rows={5}
+              value={description}
+              maxLength={DESC_MAX}
+              placeholder={DESC_PLACEHOLDER}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <small className="hb-hint hb-count">
+              {description.length}/{DESC_MAX}
+            </small>
           </label>
 
           <div className="hb-field">

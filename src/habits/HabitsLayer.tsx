@@ -21,6 +21,7 @@ import {
   type LogMap,
   type Streaks,
 } from "./habitCore";
+import { HabitInfoPopover, InfoIcon } from "./HabitInfo";
 import { useHabitSettings } from "./habitSettings";
 import {
   cycleLog,
@@ -84,6 +85,8 @@ export function HabitsLayer({ date, onDateChange }: Props) {
   const [dialog, setDialog] = useState<DialogTarget | null>(null);
   const [pauseOpen, setPauseOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
+  const [info, setInfo] = useState<{ id: string; rect: DOMRect } | null>(null);
+  const infoHabit = info ? snap.habits.find((h) => h.id === info.id) : undefined;
 
   const locked = date > today;
 
@@ -198,6 +201,9 @@ export function HabitsLayer({ date, onDateChange }: Props) {
           style={rowStyle(i)}
           gridCols={gridCols}
           onEdit={() => setDialog({ mode: "edit", id: h.id })}
+          onInfo={(rect) =>
+            setInfo((cur) => (cur?.id === h.id ? null : { id: h.id, rect }))
+          }
         />
       ))}
 
@@ -269,6 +275,19 @@ export function HabitsLayer({ date, onDateChange }: Props) {
         </div>
       )}
 
+      {info && infoHabit && (
+        <HabitInfoPopover
+          rect={info.rect}
+          name={infoHabit.name}
+          description={infoHabit.description}
+          onClose={() => setInfo(null)}
+          onEdit={() => {
+            setInfo(null);
+            setDialog({ mode: "edit", id: infoHabit.id });
+          }}
+        />
+      )}
+
       {dialog && (
         <Suspense fallback={null}>
           <HabitDialog target={dialog} onClose={() => setDialog(null)} />
@@ -302,6 +321,7 @@ function HabitRow({
   style,
   gridCols,
   onEdit,
+  onInfo,
 }: {
   habit: Habit;
   date: ISODate;
@@ -312,6 +332,7 @@ function HabitRow({
   style: { left: number; top: number; width: number; height: number };
   gridCols: string;
   onEdit: () => void;
+  onInfo: (rect: DOMRect) => void;
 }) {
   const log = logsOf(habit.id)?.get(date);
   const state = resolveState(habit, date, log, today, hhmm);
@@ -324,13 +345,22 @@ function HabitRow({
       data-state={state}
       style={{ ...style, gridTemplateColumns: gridCols }}
     >
-      <div className="hb-cell hb-name">
-        <span className="hb-name-text">{habit.name}</span>
+      <button
+        type="button"
+        className="hb-cell hb-name hb-name-btn"
+        aria-label={`Descripción de ${habit.name}`}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => onInfo(e.currentTarget.getBoundingClientRect())}
+      >
+        <span className="hb-name-line">
+          <span className="hb-name-text">{habit.name}</span>
+          {habit.description && <InfoIcon className="hb-info" />}
+        </span>
         <span className="hb-sub">
           {daysText(days)}
           {habit.remind && <BellMini />}
         </span>
-      </div>
+      </button>
 
       <div className="hb-cell hb-time">{habit.time ?? "—"}</div>
 

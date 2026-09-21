@@ -10,11 +10,14 @@ import {
   createHabit,
   dayProgress,
   daysInMonth,
+  DESC_MAX,
   SNOOZE_DEFAULT,
   SNOOZE_MAX,
   SNOOZE_PRESETS,
   dueReminders,
   normalizeSnooze,
+  parseDescription,
+  sanitizeDescription,
   parseSnoozeMinutes,
   effectiveFired,
   isActiveOn,
@@ -483,4 +486,31 @@ test("pausedLast: los pausados hoy van al final, sin alterar el orden relativo",
   // una pausa ya terminada no cuenta
   const e = mk({ id: "e", time: "06:00", pauses: [{ from: "2026-08-01", to: "2026-08-10" }] });
   assert.deepEqual(pausedLast([e, b], today).map((h) => h.id), ["e", "b"]);
+});
+
+test("sanitizeDescription: conserva las líneas, limpia espacios y recorta", () => {
+  assert.equal(sanitizeDescription("  Propósito:  calma \r\n\r\n\r\n\r\nVersión mínima: 1 min  "), "Propósito: calma\n\nVersión mínima: 1 min");
+  assert.equal(sanitizeDescription("   \n \t "), "");
+  assert.equal(sanitizeDescription("a".repeat(DESC_MAX + 50)).length, DESC_MAX);
+});
+
+test("parseDescription: reconoce Propósito / Versión mínima / Versión completa", () => {
+  const parts = parseDescription(
+    "Propósito: cuidar mi cuerpo\nversion minima - 2 min de estiramiento\nVersión completa: 30 min\nnota libre: sin etiqueta\n\nsolo texto",
+  );
+  assert.deepEqual(parts, [
+    { label: "Propósito", text: "cuidar mi cuerpo" },
+    { label: "Versión mínima", text: "2 min de estiramiento" },
+    { label: "Versión completa", text: "30 min" },
+    { text: "nota libre: sin etiqueta" },
+    { text: "solo texto" },
+  ]);
+  assert.deepEqual(parseDescription(""), []);
+});
+
+test("createHabit: la descripción es opcional y no deja clave vacía", () => {
+  const base = { id: "x", name: "A", today: "2026-09-20", order: 0, now: 1 };
+  assert.equal("description" in createHabit(base), false);
+  assert.equal("description" in createHabit({ ...base, description: "   " }), false);
+  assert.equal(createHabit({ ...base, description: " Propósito: x " }).description, "Propósito: x");
 });

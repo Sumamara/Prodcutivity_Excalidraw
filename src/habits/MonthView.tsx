@@ -19,6 +19,7 @@ import {
   type ISODate,
   type LogMap,
 } from "./habitCore";
+import { HabitInfoPopover, InfoIcon } from "./HabitInfo";
 import { cycleLog, logsOf, useHabitsSnapshot } from "./habitsStore";
 import { useMinute } from "./minute";
 import "../canvas/MoodMeter.css"; // reutiliza el modal (.mm-backdrop/.mm-panel/…)
@@ -53,6 +54,8 @@ export default function MonthView({
   const snap = useHabitsSnapshot();
   const { today, hhmm } = useMinute();
   const [month, setMonth] = useState<ISODate>(() => monthStart(date));
+  const [info, setInfo] = useState<{ id: string; rect: DOMRect } | null>(null);
+  const infoHabit = info ? snap.habits.find((h) => h.id === info.id) : undefined;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,7 +170,22 @@ export default function MonthView({
                 {habits.map((h, i) => (
                   <tr key={h.id}>
                     <th className="mv-namecol" scope="row" title={h.name}>
-                      {h.name}
+                      {h.description ? (
+                        <button
+                          type="button"
+                          className="mv-namebtn"
+                          aria-label={`Descripción de ${h.name}`}
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setInfo((cur) => (cur?.id === h.id ? null : { id: h.id, rect }));
+                          }}
+                        >
+                          <span className="mv-namebtn-t">{h.name}</span>
+                          <InfoIcon className="hb-info" />
+                        </button>
+                      ) : (
+                        h.name
+                      )}
                     </th>
                     {days.map((d) => {
                       const state = resolveState(h, d, logsOf(h.id)?.get(d), today, hhmm);
@@ -217,6 +235,14 @@ export default function MonthView({
           <span><i className="mv-dot" data-state="off" /> no toca</span>
         </div>
       </div>
+      {info && infoHabit && (
+        <HabitInfoPopover
+          rect={info.rect}
+          name={infoHabit.name}
+          description={infoHabit.description}
+          onClose={() => setInfo(null)}
+        />
+      )}
     </div>,
     document.body,
   );
