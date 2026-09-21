@@ -3,19 +3,43 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from "react";
 
-import { markError, markPending, markSaved } from "../saveStatus";
-import { debounce, loadCells, saveCells } from "./persistence";
+import {
+  flushCells,
+  patchCells,
+  peekCells,
+  useCellValues,
+} from "./cellsStore";
+import { columnOfCellId } from "../timer/timerCore";
 import type { Cell } from "./SheetTemplate";
 import "./CellFields.css";
 
+/**
+ * Valores de una celda `check`: vacío → ✓ (cumplido) → ~ (a medias, amarillo) →
+ * ✗ (no cumplido) → vacío.
+ */
+export const CHECK_DONE = "✓";
+export const CHECK_PARTIAL = "~";
+export const CHECK_MISS = "✗";
+const CHECK_CYCLE = ["", CHECK_DONE, CHECK_PARTIAL, CHECK_MISS];
+
+/** Siguiente valor de una celda `check` (cualquier otro valor cuenta como vacío). */
+export function nextCheck(current: string | undefined): string {
+  const i = CHECK_CYCLE.indexOf(current ?? "");
+  return CHECK_CYCLE[(Math.max(i, 0) + 1) % CHECK_CYCLE.length];
+}
+
 export interface CellFieldsHandle {
-  /** Abre el editor sobre la celda que contiene el punto (coords de la hoja). */
-  editAt(x: number, y: number): void;
+  /**
+   * Toque sobre la celda que contiene el punto (coords de la hoja): abre el
+   * editor de las celdas de texto/número y alterna las celdas `check`. Con
+   * `checksOnly` solo responden las celdas `check` (toque con la herramienta
+   * Mover, fuera del modo celdas).
+   */
+  editAt(x: number, y: number, opts?: { checksOnly?: boolean }): void;
   /** Cierra el editor si está abierto (confirma el valor). */
   close(): void;
 }
@@ -26,6 +50,17 @@ interface Props {
   cells: Cell[];
   sheetW: number;
   sheetH: number;
+  /**
+   * Normalizadores por columna, aplicados SOLO al confirmar la celda (salir /
+   * Enter), nunca mientras escribes. Devuelven el texto a guardar o `null` si el
+   * valor no es válido (entonces se conserva lo escrito).
+   */
+  normalize?: Record<string, (raw: string) => string | null>;
+  /**
+   * Se llama al tocar una celda (`id`) o un punto sin celda (`null`). Sirve para
+   * saber qué fila se ha seleccionado (p. ej. mostrar ▶ en la celda Esp tocada).
+   */
+  onSelect?: (cellId: string | null) => void;
 }
 
 /**
@@ -34,67 +69,50 @@ interface Props {
  * hoja). Solo existe UN `<input>` real, que se coloca y enfoca sobre la celda
  * tocada cuando la barra está en "modo celdas". Al salir, el valor vuelve a ser
  * texto SVG. Así el zoom con 2 dedos no se traba.
+ *
+ * Los valores viven en `cellsStore` (único escritor, por parches): aquí solo se
+ * leen y se parchean, de modo que el temporizador puede escribir Ti/Tf/Real a
+ * la vez sin que este componente lo pise.
  */
 export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellFields(
-  { date, sectionId, cells, sheetW, sheetH },
+  { date, sectionId, cells, sheetW, sheetH, normalize, onSelect },
   ref,
 ) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [loaded, setLoaded] = useState(false);
+  const values = useCellValues(date, sectionId);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const valuesRef = useRef<Record<string, string>>({});
-  // Solo guardar cuando la carga inicial ya terminó: si no, escribiríamos {}
-  // encima de los datos (p. ej. en el desmontar simulado de StrictMode).
-  const loadedRef = useRef(false);
   const editorRef = useRef<HTMLInputElement>(null);
   const editingRef = useRef<string | null>(null);
   editingRef.current = editingId;
 
-  const flush = useMemo(
-    () =>
-      debounce(() => {
-        void saveCells(date, sectionId, valuesRef.current).then((ok) =>
-          ok ? markSaved() : markError(),
-        );
-      }, 500),
-    [date, sectionId],
-  );
-
-  // Lee el valor actual del <input> y lo guarda (debounce). En iPad, Scribble y
-  // el teclado con predicción a veces NO disparan `change` mientras escribes;
-  // por eso se llama también en `input`, `compositionend`, un sondeo periódico
-  // y al salir del campo.
+  // Lee el valor actual del <input> y lo parchea (debounce en el almacén). En
+  // iPad, Scribble y el teclado con predicción a veces NO disparan `change`
+  // mientras escribes; por eso se llama también en `input`, `compositionend`, un
+  // sondeo periódico y al salir del campo. Guarda el valor CRUDO.
   const syncEditor = useCallback((): boolean => {
     const id = editingRef.current;
     const el = editorRef.current;
     if (!id || !el) return false;
-    if (el.value === (valuesRef.current[id] ?? "")) return false;
-    valuesRef.current = { ...valuesRef.current, [id]: el.value };
-    markPending();
-    flush();
+    if (el.value === (peekCells(date, sectionId)?.[id] ?? "")) return false;
+    void patchCells(date, sectionId, { [id]: el.value });
     return true;
-  }, [flush]);
-
-  useEffect(() => {
-    let alive = true;
-    loadedRef.current = false;
-    loadCells(date, sectionId).then((v) => {
-      if (!alive) return;
-      valuesRef.current = v;
-      loadedRef.current = true;
-      setValues(v);
-      setLoaded(true);
-    });
-    return () => {
-      alive = false;
-    };
   }, [date, sectionId]);
 
-  useEffect(() => {
-    return () => {
-      if (loadedRef.current) void saveCells(date, sectionId, valuesRef.current);
-    };
-  }, [date, sectionId]);
+  // Confirma la celda en edición: normaliza según su columna y guarda al
+  // instante (sin esperar al debounce).
+  const commit = useCallback(() => {
+    const id = editingRef.current;
+    const el = editorRef.current;
+    if (!id || !el) return;
+    const raw = el.value;
+    const norm = normalize?.[columnOfCellId(id)];
+    const value = norm ? (norm(raw) ?? raw) : raw;
+    if (value === (peekCells(date, sectionId)?.[id] ?? "")) {
+      // Sin cambios de valor, pero puede quedar pendiente lo escrito en crudo.
+      flushCells(date, sectionId);
+      return;
+    }
+    void patchCells(date, sectionId, { [id]: value }, { immediate: true });
+  }, [date, sectionId, normalize]);
 
   // Mientras el editor está abierto, sondea el valor por si el método de
   // entrada (Scribble, teclado iPad) no dispara eventos al escribir.
@@ -105,7 +123,7 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
   }, [editingId, syncEditor]);
 
   useImperativeHandle(ref, () => ({
-    editAt(x, y) {
+    editAt(x, y, opts) {
       const c = cells.find(
         (cell) =>
           x >= cell.x &&
@@ -114,17 +132,32 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
           y < cell.y + cell.h,
       );
       const el = editorRef.current;
-      if (!c || !el) return;
+
+      if (opts?.checksOnly && c?.kind !== "check") return;
+
+      if (c?.kind === "check") {
+        // Celda de check: se alterna con el toque, sin abrir el editor.
+        el?.blur(); // confirma lo que se estuviera escribiendo en otra celda
+        const next = nextCheck(peekCells(date, sectionId)?.[c.id]);
+        void patchCells(date, sectionId, { [c.id]: next || null }, { immediate: true });
+        return;
+      }
+
+      if (!c) {
+        onSelect?.(null);
+        return;
+      }
+      if (!el) return;
+      onSelect?.(c.id);
       if (c.id === editingRef.current) {
         el.focus({ preventScroll: true });
         return;
       }
       // El <input> es único y compartido: antes de moverlo a la celda nueva,
       // confirma lo escrito en la anterior y muéstralo ya como texto.
-      syncEditor();
-      setValues({ ...valuesRef.current });
+      commit();
 
-      el.value = valuesRef.current[c.id] ?? "";
+      el.value = peekCells(date, sectionId)?.[c.id] ?? "";
       el.style.left = `${c.x}px`;
       el.style.top = `${c.y}px`;
       el.style.width = `${c.w}px`;
@@ -141,7 +174,7 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
     },
   }));
 
-  if (!loaded) return null;
+  if (!values) return null;
 
   return (
     <>
@@ -153,6 +186,7 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
         {cells.map((c) => {
           const v = values[c.id];
           if (!v || c.id === editingId) return null;
+          if (c.kind === "check") return <CheckMark key={c.id} cell={c} value={v} />;
           return (
             <text
               key={c.id}
@@ -177,16 +211,14 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
         onCompositionEnd={syncEditor}
         onBlur={() => {
           syncEditor();
-          // Guardado inmediato al salir del campo (sin esperar al debounce).
-          if (loadedRef.current) {
-            void saveCells(date, sectionId, valuesRef.current).then((ok) =>
-              ok ? markSaved() : markError(),
-            );
-          }
-          setValues({ ...valuesRef.current });
+          commit();
           setEditingId(null);
         }}
-        onPointerDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          // Tocar la celda que ya se está editando también la "selecciona".
+          if (editingRef.current) onSelect?.(editingRef.current);
+        }}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === "Enter" || e.key === "Escape") editorRef.current?.blur();
@@ -195,3 +227,48 @@ export const CellFields = forwardRef<CellFieldsHandle, Props>(function CellField
     </>
   );
 });
+
+/** ✓ verde, ~ amarillo apagado o ✗ rojo apagado, en vectorial (no dependen de la fuente). */
+function CheckMark({ cell, value }: { cell: Cell; value: string }) {
+  const cx = cell.x + cell.w / 2;
+  const cy = cell.y + cell.h / 2;
+  const s = Math.min(cell.w, cell.h) * 0.3;
+  if (value === CHECK_DONE) {
+    return (
+      <path
+        d={`M${cx - s},${cy + s * 0.05} L${cx - s * 0.3},${cy + s * 0.8} L${cx + s},${cy - s * 0.85}`}
+        fill="none"
+        stroke="#2f9e5b"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    );
+  }
+  if (value === CHECK_PARTIAL) {
+    // Tilde ondulada (S tumbada) en amarillo apagado, el mismo tono del timer.
+    const w = s * 1.15;
+    return (
+      <path
+        d={`M${cx - w},${cy + s * 0.15} C${cx - w * 0.55},${cy - s * 0.95} ${cx - w * 0.1},${cy - s * 0.95} ${cx},${cy} S${cx + w * 0.55},${cy + s * 0.95} ${cx + w},${cy - s * 0.15}`}
+        fill="none"
+        stroke="#d9a520"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    );
+  }
+  if (value === CHECK_MISS) {
+    return (
+      <path
+        d={`M${cx - s * 0.85},${cy - s * 0.85} L${cx + s * 0.85},${cy + s * 0.85} M${cx + s * 0.85},${cy - s * 0.85} L${cx - s * 0.85},${cy + s * 0.85}`}
+        fill="none"
+        stroke="#c0574b"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+    );
+  }
+  return null;
+}

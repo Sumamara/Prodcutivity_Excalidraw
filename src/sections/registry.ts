@@ -8,11 +8,18 @@ import {
   type Cell,
 } from "../canvas/SheetTemplate";
 import type { Hotspot } from "../canvas/hotspot";
+import type { TimerColumns } from "../timer/timerCore";
 import {
   TimeBlockingTemplate,
   TIME_BLOCKING_HOTSPOTS,
   SHEET_SIZE as TIME_BLOCKING_SIZE,
 } from "./TimeBlockingTemplate";
+import {
+  HabitosTemplate,
+  HABITOS_CELLS,
+  HABITOS_HOTSPOTS,
+  SHEET_SIZE as HABITOS_SIZE,
+} from "./HabitosTemplate";
 import {
   MenuDiaTemplate,
   MENU_DIA_HOTSPOTS,
@@ -43,6 +50,12 @@ export interface Section {
    * sea >= la fecha desde la que aplica.
    */
   supportsTemplate?: boolean;
+  /**
+   * Si está, la sección tiene temporizador por fila: ▶ en el margen izquierdo,
+   * cuenta atrás desde Esp (en minutos) y autorrelleno de Ti/Tf/Real. Requiere
+   * `cells`; las columnas se indican por su nombre (ids `<columna>-<fila>`).
+   */
+  timer?: TimerColumns;
 }
 
 export const SECTIONS: Section[] = [
@@ -55,6 +68,7 @@ export const SECTIONS: Section[] = [
     dateScoped: true,
     hotspots: CONCENTRACION_HOTSPOTS,
     cells: CONCENTRACION_CELLS,
+    timer: { esp: "esp", ti: "ti", tf: "tf", real: "real", label: "obj" },
   },
   {
     id: "time-blocking",
@@ -74,6 +88,18 @@ export const SECTIONS: Section[] = [
     height: MENU_DIA_SIZE.h,
     dateScoped: false,
     hotspots: MENU_DIA_HOTSPOTS,
+  },
+  {
+    // Seguimiento manual de hábitos: una sola hoja persistente (las fechas se
+    // escriben a mano en la propia hoja, no dependen de la barra de fecha).
+    id: "habitos",
+    label: "Hábitos",
+    Template: HabitosTemplate,
+    width: HABITOS_SIZE.w,
+    height: HABITOS_SIZE.h,
+    dateScoped: false,
+    hotspots: HABITOS_HOTSPOTS,
+    cells: HABITOS_CELLS,
   },
 ];
 

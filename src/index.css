@@ -231,6 +231,16 @@ body {
   pointer-events: none;
 }
 
+/* Capa del temporizador: ▶ en el margen izquierdo de cada fila + barra de
+   progreso de la fila activa. Solo los botones reciben punteros. */
+.play-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* Capa de zonas interactivas de la hoja (cabeceras), por encima del lienzo. */
 .hotspot-layer {
   position: absolute;
@@ -244,7 +254,8 @@ body {
    de Excalidraw vía transform (translate + scale). */
 .sheet-anchor,
 .cells-anchor,
-.hotspot-anchor {
+.hotspot-anchor,
+.play-anchor {
   position: absolute;
   top: 0;
   left: 0;

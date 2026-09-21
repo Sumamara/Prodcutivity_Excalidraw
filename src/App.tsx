@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Canvas, type Viewport } from "./canvas/Canvas";
 import { CellFields, type CellFieldsHandle } from "./canvas/CellFields";
@@ -14,6 +14,16 @@ import { DateBar } from "./DateBar";
 import { SaveIndicator } from "./SaveIndicator";
 import { formatShort, todayISO } from "./dates";
 import { Toolbar } from "./tools/Toolbar";
+import { RowPlayLayer } from "./timer/RowPlayLayer";
+import { TimerChip } from "./timer/TimerChip";
+import { TimeUpDialog } from "./timer/TimeUpDialog";
+import {
+  columnOfCellId,
+  normalizeEsp,
+  rowOfCellId,
+  type ActiveTimer,
+} from "./timer/timerCore";
+import { getTimerSnapshot, hydrateTimer } from "./timer/timerStore";
 import {
   DEFAULT_SECTION_ID,
   SECTIONS,
@@ -42,10 +52,13 @@ export function App() {
   // Sube al terminar la limpieza única de semillas "congeladas": remonta el
   // lienzo para que el día actual vuelva a sembrarse desde la plantilla.
   const [healTick, setHealTick] = useState(0);
+  // Fila cuya celda Esp se tocó: solo esa muestra el ▶ del temporizador.
+  const [timerRow, setTimerRow] = useState<number | null>(null);
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
   const cellsAnchorRef = useRef<HTMLDivElement>(null);
+  const playAnchorRef = useRef<HTMLDivElement>(null);
   const cellFieldsRef = useRef<CellFieldsHandle>(null);
   const hotspotsClose = useRef<(() => void) | null>(null);
   const lastVp = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
@@ -53,6 +66,8 @@ export function App() {
 
   useEffect(() => {
     cleanupLegacyStorage();
+    // Recupera el temporizador activo (recarga / navegador cerrado).
+    void hydrateTimer();
 
     // Limpieza única: días de Time blocking cuya escena guardada es una copia
     // exacta de una versión de plantilla (semillas persistidas por error antes
@@ -82,6 +97,11 @@ export function App() {
     lastTransform.current = "";
   }, [sectionId, date, templateMode]);
 
+  // El ▶ vuelve a ocultarse al salir del modo celdas o al cambiar de hoja/fecha.
+  useEffect(() => {
+    setTimerRow(null);
+  }, [cellMode, sectionId, date]);
+
   // Al cambiar de sección se sale del modo plantilla.
   useEffect(() => {
     setTemplateMode(false);
@@ -98,9 +118,13 @@ export function App() {
     if (!cellMode) cellFieldsRef.current?.close();
   }, [cellMode]);
 
-  const onCellTap = useCallback((x: number, y: number) => {
-    cellFieldsRef.current?.editAt(x, y);
-  }, []);
+  // Fuera del modo celdas (herramienta Mover) solo responden las celdas `check`.
+  const onCellTap = useCallback(
+    (x: number, y: number) => {
+      cellFieldsRef.current?.editAt(x, y, { checksOnly: !cellMode });
+    },
+    [cellMode],
+  );
 
   // Anclamos hoja y zonas interactivas al viewport de Excalidraw con el mismo
   // transform, sin re-render en cada frame. Si el transform no cambió (p. ej.
@@ -113,6 +137,7 @@ export function App() {
     if (anchorRef.current) anchorRef.current.style.transform = t;
     if (hotspotsAnchorRef.current) hotspotsAnchorRef.current.style.transform = t;
     if (cellsAnchorRef.current) cellsAnchorRef.current.style.transform = t;
+    if (playAnchorRef.current) playAnchorRef.current.style.transform = t;
 
     const p = lastVp.current;
     if (p.scrollX !== v.scrollX || p.scrollY !== v.scrollY || p.zoom !== v.zoom) {
@@ -125,6 +150,39 @@ export function App() {
     setSectionId(id);
     saveActiveSection(id);
   }, []);
+
+  // Lleva a la hoja (fecha + sección) donde se inició el temporizador.
+  const goToTimerSheet = useCallback(
+    (t: ActiveTimer) => {
+      setDate(t.date);
+      if (t.sectionId !== sectionId) switchSection(t.sectionId);
+    },
+    [sectionId, switchSection],
+  );
+
+  // Esp se normaliza a minutos al salir de la celda (1h30 → 90).
+  const cellNormalizers = useMemo(
+    () => (active.timer ? { [active.timer.esp]: normalizeEsp } : undefined),
+    [active.timer],
+  );
+
+  // Tocar una celda: si es la de Esp, esa fila muestra el ▶; cualquier otra
+  // celda (o un punto sin celda) lo oculta.
+  const handleCellSelect = useCallback(
+    (id: string | null) => {
+      const t = active.timer;
+      // Con un temporizador activo no se selecciona ninguna fila (los ▶ de las
+      // demás siguen ocultos y no deben reaparecer al terminar).
+      if (getTimerSnapshot()) {
+        setTimerRow(null);
+        return;
+      }
+      setTimerRow(
+        t && id && columnOfCellId(id) === t.esp ? rowOfCellId(id) : null,
+      );
+    },
+    [active.timer],
+  );
 
   const Template = active.Template;
   const sheetStyle = { width: active.width, height: active.height };
@@ -153,6 +211,11 @@ export function App() {
           </button>
         ))}
         <div className="app-tabs-right">
+          <TimerChip
+            viewedDate={date}
+            viewedSectionId={sectionId}
+            onGoTo={goToTimerSheet}
+          />
           {active.supportsTemplate && (
             <>
               {templateMode && (
@@ -228,6 +291,28 @@ export function App() {
                   cells={active.cells}
                   sheetW={active.width}
                   sheetH={active.height}
+                  normalize={cellNormalizers}
+                  onSelect={handleCellSelect}
+                />
+              </div>
+            </div>
+          )}
+
+          {active.timer && active.cells && active.cells.length > 0 && (
+            <div className="play-layer">
+              <div
+                className="play-anchor"
+                ref={playAnchorRef}
+                style={sheetStyle}
+              >
+                <RowPlayLayer
+                  key={key}
+                  date={effDate}
+                  sectionId={sectionId}
+                  cells={active.cells}
+                  cols={active.timer}
+                  selectedRow={timerRow}
+                  onStarted={() => setTimerRow(null)}
                 />
               </div>
             </div>
@@ -247,6 +332,8 @@ export function App() {
               />
             </div>
           </div>
+
+          <TimeUpDialog />
 
           <Toolbar
             api={api}

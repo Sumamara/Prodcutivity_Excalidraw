@@ -1,5 +1,11 @@
 import Dexie, { type Table } from "dexie";
 
+import type {
+  ActiveTimer,
+  CellPatch,
+  SessionRow,
+} from "../timer/timerCore";
+
 /**
  * Almacén local en IndexedDB. Cada fila va por (fecha, sección): el día 5 tiene
  * su escena y sus campos, el día 6 los suyos. Sin cuota de 5 MB como
@@ -36,10 +42,19 @@ interface TemplateRow {
   updated: number;
 }
 
+/** Temporizador activo: una sola fila con `key = "active"`. */
+interface TimerRow {
+  key: string;
+  timer: ActiveTimer;
+}
+
 class JournalDB extends Dexie {
   scenes!: Table<SceneRow, string>;
   cells!: Table<CellsRow, string>;
   templates!: Table<TemplateRow, string>;
+  timers!: Table<TimerRow, string>;
+  /** Sesiones terminadas del temporizador (solo se añaden). */
+  sessions!: Table<SessionRow, string>;
 
   constructor() {
     super("journal-horas");
@@ -82,6 +97,14 @@ class JournalDB extends Dexie {
           });
         }
       });
+    // v4: temporizador de tareas (aditivo, sin migración de datos).
+    this.version(4).stores({
+      scenes: "key, updated",
+      cells: "key, updated",
+      templates: "key, section, effectiveFrom",
+      timers: "key",
+      sessions: "id, date, endedAt",
+    });
   }
 }
 
@@ -190,16 +213,73 @@ export async function getCells(
   }
 }
 
-export async function putCells(
+/**
+ * Aplica un PARCHE a las celdas de (fecha, sección) en una transacción
+ * (leer → fusionar → escribir). `null` o "" borra la celda. A diferencia de
+ * guardar el mapa completo, dos escritores (teclado y temporizador) no se pisan.
+ */
+export async function patchCellsRow(
   date: string,
   section: string,
-  values: Record<string, string>,
+  patch: CellPatch,
 ): Promise<boolean> {
   try {
-    await db.cells.put({ key: rowKey(date, section), values, updated: Date.now() });
+    const key = rowKey(date, section);
+    await db.transaction("rw", db.cells, async () => {
+      const row = await db.cells.get(key);
+      const values = { ...(row?.values ?? {}) };
+      for (const [id, v] of Object.entries(patch)) {
+        if (v === null || v === "") delete values[id];
+        else values[id] = v;
+      }
+      await db.cells.put({ key, values, updated: Date.now() });
+    });
     return true;
   } catch (err) {
-    console.warn("[db] putCells", err);
+    console.warn("[db] patchCellsRow", err);
+    return false;
+  }
+}
+
+/* ------------------------------- Temporizador ------------------------------ */
+
+const ACTIVE_TIMER_KEY = "active";
+
+export async function getActiveTimer(): Promise<ActiveTimer | null> {
+  try {
+    return (await db.timers.get(ACTIVE_TIMER_KEY))?.timer ?? null;
+  } catch (err) {
+    console.warn("[db] getActiveTimer", err);
+    return null;
+  }
+}
+
+export async function putActiveTimer(timer: ActiveTimer): Promise<boolean> {
+  try {
+    await db.timers.put({ key: ACTIVE_TIMER_KEY, timer });
+    return true;
+  } catch (err) {
+    console.warn("[db] putActiveTimer", err);
+    return false;
+  }
+}
+
+export async function clearActiveTimer(): Promise<boolean> {
+  try {
+    await db.timers.delete(ACTIVE_TIMER_KEY);
+    return true;
+  } catch (err) {
+    console.warn("[db] clearActiveTimer", err);
+    return false;
+  }
+}
+
+export async function addSession(session: SessionRow): Promise<boolean> {
+  try {
+    await db.sessions.put(session);
+    return true;
+  } catch (err) {
+    console.warn("[db] addSession", err);
     return false;
   }
 }

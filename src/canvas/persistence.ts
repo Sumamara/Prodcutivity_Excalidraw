@@ -2,10 +2,8 @@ import { serializeAsJSON } from "@excalidraw/excalidraw";
 
 import {
   db,
-  getCells,
   getSceneJSON,
   getTemplateFor,
-  putCells,
   putSceneJSON,
   putTemplateVersion,
 } from "./db";
@@ -243,21 +241,8 @@ export async function healSeededScenes(section: string): Promise<number> {
   }
 }
 
-/** Texto de los campos de celda por (fecha, sección): { "<col>-<fila>": valor }. */
-export async function loadCells(
-  date: string,
-  sectionId: string,
-): Promise<Record<string, string>> {
-  return getCells(date, sectionId);
-}
-
-export async function saveCells(
-  date: string,
-  sectionId: string,
-  values: Record<string, string>,
-): Promise<boolean> {
-  return putCells(date, sectionId, values);
-}
+// Los campos de celda ({ "<col>-<fila>": valor }) viven en `cellsStore.ts`, que
+// es el único punto de lectura/escritura (por parches).
 
 export function loadActiveSection(): string | null {
   try {

@@ -15,9 +15,13 @@ Plan de arquitectura completo: <https://claude.ai/code/artifact/55098a79-0f9e-4d
 - [x] Hoja centrada al arrancar
 - [x] Autoguardado en `localStorage` con debounce de 800 ms (`serializeAsJSON`)
 - [x] Restauración de la escena al recargar
-- [x] Significado de columnas documentado en `COLUMN_MEANINGS` (Ti/Tf/Ag/Ac/Ev confirmados; Esp/Real por confirmar)
+- [x] Significado de columnas documentado en `COLUMN_MEANINGS`. **Esp y Real van en minutos**; Ti/Tf en `HH:MM` (24 h)
 - [x] Explicaciones **en la propia hoja**: tocar una cabecera/etiqueta abre un popover con su definición. Zonas transparentes ancladas al mismo transform que la hoja; popover por portal a `<body>`; cierra con Esc, click fuera o al mover/zoomear
 - [x] **Pestañas de sección** (Concentración · Time blocking · Menú del día): Excalidraw vive dentro de un marco (`.page-frame`), cada sección tiene su plantilla, sus hotspots y su **escena propia** en `localStorage`; la hoja se encaja y centra en el marco al entrar; la pestaña activa se recuerda
+
+- [x] **Temporizador por fila** (Concentración): en modo celdas, al tocar la celda **Esp** de una fila (con valor válido) aparece ▶ a su izquierda (si no la tocas, está oculto). Al pulsarlo arranca una cuenta atrás con esos minutos, rellena Ti, y al terminar (■) rellena Tf y Real. Al llegar a 0, o al pulsar ■, sale un aviso verde "Tiempo finalizado · ¡Muy bien!" (Replantear / Descansar 15–20 % del tiempo trabajado); al llegar a 0 el timer sigue en negativo (amarillo apagado). Un solo timer activo, funciona en cualquier fecha. Sin timer, el contador de la cabecera queda en `00:00` con ▶: inicia un **cronómetro libre** (cuenta hacia arriba) y al detenerlo sale el mismo aviso con el tiempo de descanso sugerido. Esp acepta `90`, `1.5` (horas), `2h`, `1h30`, `1:30`, `90m` y lo convierte a minutos al salir de la celda. Diseño completo en [Implementacion Timer.md](Implementacion%20Timer.md)
+
+- [x] **Pestaña Hábitos**: seguimiento manual. Columna de hábitos (20 filas) y 31 columnas de días; la fecha de cada día se escribe en la fila gris justo al marcarlo (celdas de texto o a mano) y **tocando una celda** se marca ✓ (cumplido) → ~ (a medias, amarillo) → ✗ (no cumplido) → vacío (funciona con la herramienta Mover y en modo celdas; también se puede marcar a mano con el lápiz). Es una sola hoja persistente, sin depender de la barra de fecha ([HabitosTemplate.tsx](src/sections/HabitosTemplate.tsx))
 
 ### Siguiente
 
@@ -38,6 +42,15 @@ src/
     hotspot.ts         # tipo Hotspot
     db.ts              # IndexedDB (Dexie): filas por "<fecha>::<sección>"
     persistence.ts     # saveScene/loadScene + loadCells/saveCells (async, por fecha+sección)
+  canvas/cellsStore.ts # ÚNICO escritor de celdas (por parches, transaccional, multi-pestaña)
+  timer/
+    timerCore.ts       # puro: parseEsp, formato, máquina de estados (probado con `npm test`)
+    timerStore.ts      # timer activo (fuera de React), persistencia y escritura de Ti/Tf/Real
+    clock.ts           # reloj único de 1 s compartido (useNow)
+    timerAudio.ts      # tono suave de fin con Web Audio (agenda, no depende de setTimeout)
+    TimerChip.tsx      # contador de la cabecera (a la izquierda de la fecha)
+    RowPlayLayer.tsx   # ▶ del margen (solo fila Esp tocada) + resaltado gris de la fila activa
+    TimeUpDialog.tsx   # aviso "Tiempo finalizado" al llegar a 0
   dates.ts             # todayISO / shiftISO / formatHuman (ISO local YYYY-MM-DD)
   DateBar.tsx          # selector de fecha global en la barra de pestañas
     types.ts           # tipos derivados de las props del componente
@@ -45,6 +58,7 @@ src/
     registry.ts             # SECTIONS: id, label, Template, hotspots
     TimeBlockingTemplate.tsx # rejilla horaria 06:00–22:00 (30 min)
     MenuDiaTemplate.tsx      # "carta" del día: Entrada / Principal / Guarnición / Postre
+    HabitosTemplate.tsx      # hábitos × 31 días, todo manual (fechas y checks)
   App.tsx              # pestañas + .page-frame (sheet-layer + Canvas + hotspot-layer)
   main.tsx
 ```
@@ -57,6 +71,7 @@ npm run dev        # http://localhost:5173 (o 5174)
 npm run build      # typecheck + build de producción
 npm run preview    # sirve el build
 npm run typecheck
+npm test           # pruebas del núcleo del temporizador (node:test, sin dependencias)
 ```
 
 ## Deploy web (GitHub Pages)

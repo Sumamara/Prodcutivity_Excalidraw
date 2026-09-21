@@ -20,18 +20,18 @@ export const SHEET_SIZE = { w: 1000, h: 750 };
 /**
  * Significado de las columnas de la tabla. Se usará para conectar el panel de
  * objetivos y el registro de horas a cada fila en la siguiente iteración.
- *   Esp  – horas esperadas / estimadas   (por confirmar)
- *   Real – horas reales                   (por confirmar)
- *   Ti   – tiempo inicial (hora de inicio)
- *   Tf   – tiempo final (hora de fin)
+ *   Esp  – minutos esperados (acepta horas y las convierte: ver timerCore)
+ *   Real – minutos reales (los rellena el temporizador; editable)
+ *   Ti   – tiempo inicial (hora de inicio, HH:MM)
+ *   Tf   – tiempo final (hora de fin, HH:MM)
  *   ⚡   – energía
  *   Ag   – agradabilidad
  *   Ac   – activación
  *   Ev   – evitación ("¿estoy evitando?")
  */
 export const COLUMN_MEANINGS: Record<string, string> = {
-  Esp: "Horas esperadas",
-  Real: "Horas reales",
+  Esp: "Minutos esperados",
+  Real: "Minutos reales",
   Ti: "Tiempo inicial",
   Tf: "Tiempo final",
   Energia: "Energía",
@@ -89,10 +89,10 @@ const NARROW_COLS: {
   body: string;
   scale?: ScaleLegend;
 }[] = [
-  { id: "esp", title: "Esp · horas esperadas", body: "Horas que calculas que te llevará el objetivo, antes de empezar." },
-  { id: "real", title: "Real · horas reales", body: "Horas que te llevó de verdad. Compáralo con Esp para calibrar tus estimaciones." },
-  { id: "ti", title: "Ti · tiempo inicial", body: "Hora a la que empiezas la tarea." },
-  { id: "tf", title: "Tf · tiempo final", body: "Hora a la que la terminas." },
+  { id: "esp", title: "Esp · minutos esperados", body: "Minutos que calculas que te llevará el objetivo, antes de empezar. Acepta 90, 1.5 (horas), 1h30 o 1:30 y lo convierte a minutos. Con un valor válido aparece ▶ a la izquierda de la fila para iniciar el temporizador." },
+  { id: "real", title: "Real · minutos reales", body: "Minutos que te llevó de verdad (lo rellena el temporizador; puedes corregirlo). Compáralo con Esp para calibrar tus estimaciones." },
+  { id: "ti", title: "Ti · tiempo inicial", body: "Hora a la que empiezas la tarea (HH:MM). El temporizador la rellena al pulsar ▶." },
+  { id: "tf", title: "Tf · tiempo final", body: "Hora a la que la terminas (HH:MM). El temporizador la rellena al terminar." },
   { id: "energia", title: "¿Nivel de energía?", body: "Tu energía mientras la haces, de 1 a 10.", scale: ENERGIA_SCALE },
   { id: "ag", title: "¿Agradabilidad?", body: "Cuánto te gustó hacerla, de 1 a 10.", scale: AGRADABILIDAD_SCALE },
   { id: "ac", title: "¿Nivel de activación?", body: "Cuánta activación sentiste, de 1 a 10.", scale: ACTIVACION_SCALE },
@@ -149,7 +149,11 @@ export interface Cell {
   y: number;
   w: number;
   h: number;
-  kind: "num" | "text";
+  /**
+   * `num`/`text`: campo de escritura. `check`: se marca con un toque, alternando
+   * vacío → ✓ → ~ (a medias) → ✗ → vacío (hoja de hábitos).
+   */
+  kind: "num" | "text" | "check";
 }
 
 export const CELLS: Cell[] = (() => {
