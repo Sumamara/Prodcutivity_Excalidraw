@@ -153,9 +153,6 @@ function Dialog({ info }: { info: TimeUpInfo }) {
 
         {isOvertimePhase && info.kind === "task" ? (
           <div className="tu-body">
-            <p className="tu-over-note">
-              El bloque planeado terminó. El cronómetro sigue en tiempo extra:
-            </p>
             <OvertimeClock />
             <TaskNameLine info={info} />
             <button
@@ -169,15 +166,6 @@ function Dialog({ info }: { info: TimeUpInfo }) {
         ) : (
           <div className="tu-body">
             <p className="tu-praise">¡Muy bien!</p>
-            <p className="tu-praise-sub">Un bloque de enfoque más a tu favor.</p>
-
-            {info.kind === "task" ? (
-              <TaskLine info={info} />
-            ) : (
-              <p className="tu-task">
-                del cronómetro · trabajaste <b>{formatWorked(info.workedMs)}</b>
-              </p>
-            )}
 
             <div className="tu-opt">
               <span className="tu-n">1</span>
@@ -192,14 +180,15 @@ function Dialog({ info }: { info: TimeUpInfo }) {
               <div className="tu-txt">
                 <b>Descansar</b>
                 <span>
-                  Puedes descansar{" "}
+                  Trabajaste <b>{formatWorked(info.workedMs)}</b>. Puedes
+                  descansar{" "}
                   {lo === hi ? (
                     <>
                       <b>{lo}</b> {unit(lo)}
                     </>
                   ) : (
                     <>
-                      de <b>{lo}</b> a <b>{hi}</b> minutos
+                      entre <b>{lo}</b> y <b>{hi}</b> minutos
                     </>
                   )}
                 </span>
@@ -235,21 +224,6 @@ function TaskNameLine({ info }: { info: Extract<TimeUpInfo, { kind: "task" }> })
   return (
     <p className="tu-task tu-task-center">
       Tarea: <b>{name}</b>
-    </p>
-  );
-}
-
-/** "de la tarea <nombre>": celda Objetivo de esa fila (en vivo), con respaldos. */
-function TaskLine({ info }: { info: Extract<TimeUpInfo, { kind: "task" }> }) {
-  const values = useCellValues(info.date, info.sectionId);
-  const name =
-    (values?.[cellId(info.cols.label, info.row)] ?? "").trim() ||
-    info.label ||
-    `Fila ${info.row + 1}`;
-  return (
-    <p className="tu-task">
-      de la tarea <b>{name}</b> · trabajaste{" "}
-      <b>{formatWorked(info.workedMs)}</b>
     </p>
   );
 }
