@@ -305,13 +305,16 @@ export function Canvas({
     const el = wrapperRef.current;
     if (!el) return;
 
-    const PALM_CONTACT_PX = 55;
-    const PEN_GRACE_MS = 400;
+    const PALM_CONTACT_PX = 70;
 
-    type TouchPoint = { x: number; y: number; blocked: boolean; target: EventTarget | null };
+    type TouchPoint = {
+      x: number;
+      y: number;
+      blocked: boolean;
+      target: EventTarget | null;
+    };
     const touches = new Map<number, TouchPoint>();
     let penActive = false;
-    let lastPenAt = 0;
 
     let pinch: {
       dist: number;
@@ -349,153 +352,166 @@ export function Canvas({
       };
     };
 
-      const flushPinch = () => {
-        pinchRaf = null;
-        const api = apiRef.current;
-        const pts = twoFingerPoints();
-        if (!api || !pts || !pinch) return;
-        const rect = el.getBoundingClientRect();
-        const [a, b] = pts;
-        const dist = Math.hypot(b.x - a.x, b.y - a.y);
-        if (dist < 4) return;
-        const midX = (a.x + b.x) / 2 - rect.left;
-        const midY = (a.y + b.y) / 2 - rect.top;
-        const zoom = Math.max(0.1, Math.min(pinch.startZoom * (dist / pinch.dist), 30));
-        const scrollX = midX / zoom - pinch.anchorX;
-        const scrollY = midY / zoom - pinch.anchorY;
-        api.updateScene({
-          appState: {
-            scrollX,
-            scrollY,
-            zoom: { value: zoom as SceneAppState["zoom"]["value"] },
-          },
-        });
-      };
+    const flushPinch = () => {
+      pinchRaf = null;
+      const api = apiRef.current;
+      const pts = twoFingerPoints();
+      if (!api || !pts || !pinch) return;
+      const rect = el.getBoundingClientRect();
+      const [a, b] = pts;
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      if (dist < 4) return;
+      const midX = (a.x + b.x) / 2 - rect.left;
+      const midY = (a.y + b.y) / 2 - rect.top;
+      const zoom = Math.max(0.1, Math.min(pinch.startZoom * (dist / pinch.dist), 30));
+      const scrollX = midX / zoom - pinch.anchorX;
+      const scrollY = midY / zoom - pinch.anchorY;
+      api.updateScene({
+        appState: {
+          scrollX,
+          scrollY,
+          zoom: { value: zoom as SceneAppState["zoom"]["value"] },
+        },
+      });
+    };
 
-      const updatePinch = () => {
-        if (pinchRaf == null) {
-          pinchRaf = requestAnimationFrame(flushPinch);
+    const updatePinch = () => {
+      if (pinchRaf == null) {
+        pinchRaf = requestAnimationFrame(flushPinch);
+      }
+    };
+
+    const cancelPendingTouches = () => {
+      for (const [id, pt] of touches) {
+        if (pt.blocked) continue;
+        pt.blocked = true;
+        if (pt.target instanceof EventTarget) {
+          pt.target.dispatchEvent(
+            new PointerEvent("pointercancel", {
+              pointerId: id,
+              pointerType: "touch",
+              bubbles: true,
+              cancelable: false,
+            }),
+          );
         }
-      };
+      }
+      pinch = null;
+    };
 
-      const cancelPendingTouches = () => {
-        for (const [id, pt] of touches) {
-          if (pt.blocked) continue;
-          pt.blocked = true;
-          if (pt.target instanceof EventTarget) {
-            pt.target.dispatchEvent(
-              new PointerEvent("pointercancel", {
-                pointerId: id,
-                pointerType: "touch",
-                bubbles: true,
-                cancelable: false,
-              }),
-            );
-          }
-        }
-        pinch = null;
-      };
+    const isDrawingTool = () =>
+      lastTool.current === "freedraw" || lastTool.current === "eraser";
 
-      const onPointerDown = (e: PointerEvent) => {
-        if (e.pointerType === "pen") {
-          penActive = true;
-          lastPenAt = performance.now();
-          cancelPendingTouches();
-          return;
-        }
-        if (e.pointerType !== "touch") return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "pen") {
+        penActive = true;
+        cancelPendingTouches();
+        return;
+      }
+      if (e.pointerType !== "touch") return;
 
-        const isPalm = e.width > PALM_CONTACT_PX || e.height > PALM_CONTACT_PX;
-        const penBusy = penActive || performance.now() - lastPenAt < PEN_GRACE_MS;
-        const drawing =
-          lastTool.current === "freedraw" || lastTool.current === "eraser";
-        const inPenMode = !!apiRef.current?.getAppState().penMode;
+      const inPenMode = !!apiRef.current?.getAppState().penMode;
+      const isPalm = e.width > PALM_CONTACT_PX || e.height > PALM_CONTACT_PX;
 
-        // En Modo lápiz dejamos pasar 2 dedos sin bloqueo de palma si no es área grande,
-        // para poder hacer pinch-zoom propio.
-        const blocked = isPalm || (penBusy && touches.size === 0) || (drawing && !inPenMode && penBusy);
+      // En Modo lápiz manejamos TODOS los toques exclusivamente aquí:
+      // 1 dedo/palma no dibuja, y 2 dedos hacen zoom fluido sin que Safari ni
+      // Excalidraw cancelen el gesto.
+      if (inPenMode) {
         touches.set(e.pointerId, {
           x: e.clientX,
           y: e.clientY,
-          blocked,
+          blocked: isPalm,
           target: e.target,
         });
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        if (twoFingerPoints()) startPinch();
+        return;
+      }
 
-        if (blocked) {
-          e.stopImmediatePropagation();
-          e.preventDefault();
-          return;
-        }
+      // En Mover / Texto / Seleccionar no interferimos: zoom y paneo nativos.
+      if (!isDrawingTool()) return;
 
-        if (inPenMode && twoFingerPoints()) {
-          startPinch();
-        }
-      };
+      const blocked = isPalm || penActive;
+      touches.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        blocked,
+        target: e.target,
+      });
+      if (blocked) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
 
-      const onPointerMove = (e: PointerEvent) => {
-        if (e.pointerType === "pen") {
-          lastPenAt = performance.now();
-          return;
-        }
-        if (e.pointerType !== "touch") return;
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "pen") return;
+      if (e.pointerType !== "touch") return;
 
-        const pt = touches.get(e.pointerId);
-        if (!pt) return;
-        pt.x = e.clientX;
-        pt.y = e.clientY;
+      const pt = touches.get(e.pointerId);
+      if (!pt) return;
+      pt.x = e.clientX;
+      pt.y = e.clientY;
 
-        if (pt.blocked) {
-          e.stopImmediatePropagation();
-          e.preventDefault();
-          return;
-        }
+      const inPenMode = !!apiRef.current?.getAppState().penMode;
+      const isPalm = e.width > PALM_CONTACT_PX || e.height > PALM_CONTACT_PX;
 
-        // Si el contacto crece a palma en pleno movimiento, cancelarlo.
-        if (e.width > PALM_CONTACT_PX || e.height > PALM_CONTACT_PX) {
+      if (inPenMode) {
+        if (isPalm && !pt.blocked) {
           pt.blocked = true;
           pinch = null;
-          if (pt.target instanceof EventTarget) {
-            pt.target.dispatchEvent(
-              new PointerEvent("pointercancel", {
-                pointerId: e.pointerId,
-                pointerType: "touch",
-                bubbles: true,
-                cancelable: false,
-              }),
-            );
-          }
-          e.stopImmediatePropagation();
-          e.preventDefault();
-          return;
         }
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        if (!pt.blocked && pinch) updatePinch();
+        return;
+      }
 
-        if (apiRef.current?.getAppState().penMode && pinch) {
-          updatePinch();
-        }
-      };
+      if (pt.blocked) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return;
+      }
 
-      const onPointerEnd = (e: PointerEvent) => {
-        if (e.pointerType === "pen") {
-          penActive = false;
-          lastPenAt = performance.now();
-          return;
+      if (isDrawingTool() && isPalm) {
+        pt.blocked = true;
+        if (pt.target instanceof EventTarget) {
+          pt.target.dispatchEvent(
+            new PointerEvent("pointercancel", {
+              pointerId: e.pointerId,
+              pointerType: "touch",
+              bubbles: true,
+              cancelable: false,
+            }),
+          );
         }
-        if (e.pointerType !== "touch") return;
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
 
-        const pt = touches.get(e.pointerId);
-        touches.delete(e.pointerId);
-        if (!twoFingerPoints()) {
-          pinch = null;
-          if (pinchRaf != null) {
-            cancelAnimationFrame(pinchRaf);
-            pinchRaf = null;
-          }
+    const onPointerEnd = (e: PointerEvent) => {
+      if (e.pointerType === "pen") {
+        penActive = false;
+        return;
+      }
+      if (e.pointerType !== "touch") return;
+
+      const pt = touches.get(e.pointerId);
+      touches.delete(e.pointerId);
+      if (!twoFingerPoints()) {
+        pinch = null;
+        if (pinchRaf != null) {
+          cancelAnimationFrame(pinchRaf);
+          pinchRaf = null;
         }
-        if (pt?.blocked) {
-          e.stopImmediatePropagation();
-          e.preventDefault();
-        }
-      };
+      }
+      if (apiRef.current?.getAppState().penMode || pt?.blocked) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
 
       el.addEventListener("pointerdown", onPointerDown, true);
       el.addEventListener("pointermove", onPointerMove, true);
