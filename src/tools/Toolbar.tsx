@@ -397,8 +397,8 @@ export function Toolbar({
         aria-pressed={cfg.penMode}
         title={
           cfg.penMode
-            ? "Modo lápiz: ON — ignora dedo y palma"
-            : "Modo lápiz: OFF — dedo y Pencil dibujan"
+            ? "Modo lápiz: ON — ignora dedo y palma (zoom 2 dedos activo)"
+            : "Modo lápiz: OFF — dedo y Pencil dibujan (con rechazo de palma)"
         }
         aria-label="Modo lápiz"
         onClick={togglePenMode}

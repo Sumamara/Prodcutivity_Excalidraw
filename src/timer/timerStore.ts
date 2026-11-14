@@ -86,16 +86,16 @@ export type TimeUpPhase = "overtime" | "completed";
 
 export type TimeUpInfo =
   | {
-      kind: "task";
-      phase: TimeUpPhase;
-      timerId: string;
-      workedMs: number;
-      date: string;
-      sectionId: string;
-      row: number;
-      cols: TimerColumns;
-      label: string;
-    }
+    kind: "task";
+    phase: TimeUpPhase;
+    timerId: string;
+    workedMs: number;
+    date: string;
+    sectionId: string;
+    row: number;
+    cols: TimerColumns;
+    label: string;
+  }
   | { kind: "free"; phase: "completed"; workedMs: number };
 
 let timeUp: TimeUpInfo | null = null;

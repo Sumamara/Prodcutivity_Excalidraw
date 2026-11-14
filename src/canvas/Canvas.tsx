@@ -294,6 +294,207 @@ export function Canvas({
     };
   }, [saveNow]);
 
+  // Filtro inteligente de palma + zoom con 2 dedos incluso en Modo lápiz:
+  // 1) Bloquea toques de palma/puño (área > 24px o toque mientras el Pencil
+  //    está activo/reciente) para evitar la raya desde el puño al lápiz.
+  // 2) Si llega el Pencil habiendo un toque previo sin bloquear, cancela ese
+  //    toque antes de que Excalidraw mezcle coordenadas.
+  // 3) En Modo lápiz (`penMode: true`), Excalidraw bloquea los 2 dedos: aquí
+  //    manejamos pinch-to-zoom + desplazamiento de 2 dedos directamente.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const PALM_CONTACT_PX = 24;
+    const PEN_GRACE_MS = 400;
+
+    type TouchPoint = { x: number; y: number; blocked: boolean; target: EventTarget | null };
+    const touches = new Map<number, TouchPoint>();
+    let penActive = false;
+    let lastPenAt = 0;
+
+    let pinch: {
+      dist: number;
+      startZoom: number;
+      anchorX: number;
+      anchorY: number;
+    } | null = null;
+
+    const twoFingerPoints = () => {
+      const pts: TouchPoint[] = [];
+      for (const p of touches.values()) {
+        if (!p.blocked) pts.push(p);
+      }
+      return pts.length === 2 ? pts : null;
+    };
+
+    const startPinch = () => {
+      const api = apiRef.current;
+      const pts = twoFingerPoints();
+      if (!api || !pts) return;
+      const rect = el.getBoundingClientRect();
+      const [a, b] = pts;
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      if (dist < 4) return;
+      const midX = (a.x + b.x) / 2 - rect.left;
+      const midY = (a.y + b.y) / 2 - rect.top;
+      const st = api.getAppState();
+      const z = st.zoom.value;
+      pinch = {
+        dist,
+        startZoom: z,
+        anchorX: midX / z - st.scrollX,
+        anchorY: midY / z - st.scrollY,
+      };
+    };
+
+    const updatePinch = () => {
+      const api = apiRef.current;
+      const pts = twoFingerPoints();
+      if (!api || !pts || !pinch) return;
+      const rect = el.getBoundingClientRect();
+      const [a, b] = pts;
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      if (dist < 4) return;
+      const midX = (a.x + b.x) / 2 - rect.left;
+      const midY = (a.y + b.y) / 2 - rect.top;
+      const zoom = Math.max(0.1, Math.min(pinch.startZoom * (dist / pinch.dist), 30));
+      const scrollX = midX / zoom - pinch.anchorX;
+      const scrollY = midY / zoom - pinch.anchorY;
+      api.updateScene({
+        appState: {
+          scrollX,
+          scrollY,
+          zoom: { value: zoom as SceneAppState["zoom"]["value"] },
+        },
+      });
+    };
+
+    const cancelPendingTouches = () => {
+      for (const [id, pt] of touches) {
+        if (pt.blocked) continue;
+        pt.blocked = true;
+        if (pt.target instanceof EventTarget) {
+          pt.target.dispatchEvent(
+            new PointerEvent("pointercancel", {
+              pointerId: id,
+              pointerType: "touch",
+              bubbles: true,
+              cancelable: false,
+            }),
+          );
+        }
+      }
+      pinch = null;
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "pen") {
+        penActive = true;
+        lastPenAt = performance.now();
+        cancelPendingTouches();
+        return;
+      }
+      if (e.pointerType !== "touch") return;
+
+      const isPalm = e.width > PALM_CONTACT_PX || e.height > PALM_CONTACT_PX;
+      const penBusy = penActive || performance.now() - lastPenAt < PEN_GRACE_MS;
+      const drawing =
+        lastTool.current === "freedraw" || lastTool.current === "eraser";
+      const inPenMode = !!apiRef.current?.getAppState().penMode;
+
+      // En Modo lápiz dejamos pasar 2 dedos sin bloqueo de palma si no es área grande,
+      // para poder hacer pinch-zoom propio.
+      const blocked = isPalm || (penBusy && touches.size === 0) || (drawing && !inPenMode && penBusy);
+      touches.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        blocked,
+        target: e.target,
+      });
+
+      if (blocked) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return;
+      }
+
+      if (inPenMode && twoFingerPoints()) {
+        startPinch();
+      }
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "pen") {
+        lastPenAt = performance.now();
+        return;
+      }
+      if (e.pointerType !== "touch") return;
+
+      const pt = touches.get(e.pointerId);
+      if (!pt) return;
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+
+      if (pt.blocked) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return;
+      }
+
+      // Si el contacto crece a palma en pleno movimiento, cancelarlo.
+      if (e.width > PALM_CONTACT_PX || e.height > PALM_CONTACT_PX) {
+        pt.blocked = true;
+        pinch = null;
+        if (pt.target instanceof EventTarget) {
+          pt.target.dispatchEvent(
+            new PointerEvent("pointercancel", {
+              pointerId: e.pointerId,
+              pointerType: "touch",
+              bubbles: true,
+              cancelable: false,
+            }),
+          );
+        }
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        return;
+      }
+
+      if (apiRef.current?.getAppState().penMode && pinch) {
+        updatePinch();
+      }
+    };
+
+    const onPointerEnd = (e: PointerEvent) => {
+      if (e.pointerType === "pen") {
+        penActive = false;
+        lastPenAt = performance.now();
+        return;
+      }
+      if (e.pointerType !== "touch") return;
+
+      const pt = touches.get(e.pointerId);
+      touches.delete(e.pointerId);
+      if (!twoFingerPoints()) pinch = null;
+      if (pt?.blocked) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    };
+
+    el.addEventListener("pointerdown", onPointerDown, true);
+    el.addEventListener("pointermove", onPointerMove, true);
+    el.addEventListener("pointerup", onPointerEnd, true);
+    el.addEventListener("pointercancel", onPointerEnd, true);
+    return () => {
+      el.removeEventListener("pointerdown", onPointerDown, true);
+      el.removeEventListener("pointermove", onPointerMove, true);
+      el.removeEventListener("pointerup", onPointerEnd, true);
+      el.removeEventListener("pointercancel", onPointerEnd, true);
+    };
+  }, []);
+
   return (
     <div className="excalidraw-wrapper" ref={wrapperRef}>
       <Excalidraw
