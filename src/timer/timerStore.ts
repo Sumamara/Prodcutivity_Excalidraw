@@ -82,9 +82,12 @@ export function getTimerSnapshot(): ActiveTimer | null {
  * Datos del aviso. Vive en el almacén (no depende del timer) para que el aviso
  * del cronómetro pueda salir DESPUÉS de detenerlo.
  */
+export type TimeUpPhase = "overtime" | "completed";
+
 export type TimeUpInfo =
   | {
       kind: "task";
+      phase: TimeUpPhase;
       timerId: string;
       workedMs: number;
       date: string;
@@ -93,7 +96,7 @@ export type TimeUpInfo =
       cols: TimerColumns;
       label: string;
     }
-  | { kind: "free"; workedMs: number };
+  | { kind: "free"; phase: "completed"; workedMs: number };
 
 let timeUp: TimeUpInfo | null = null;
 const timeUpListeners = new Set<() => void>();
@@ -247,7 +250,11 @@ export function finishTimer(): void {
     void addSession(res.session).then((ok) => {
       if (!ok) markError();
     });
-    openTimeUp({ kind: "free", workedMs: res.session.activeMs });
+    openTimeUp({
+      kind: "free",
+      phase: "completed",
+      workedMs: res.session.activeMs,
+    });
     return;
   }
 
@@ -257,10 +264,11 @@ export function finishTimer(): void {
     void addSession(res.session).then((ok) => {
       if (!ok) markError();
     });
-    // Al terminar (■) sale el mismo aviso que al llegar a 0, con el tiempo
-    // realmente trabajado (sustituye al del cruce por 0 si seguía abierto).
+    // Al terminar (■) o al pulsar "Tarea completada" sale la vista verde con
+    // el tiempo realmente trabajado (sustituye al aviso amarillo de cruce por 0).
     openTimeUp({
       kind: "task",
+      phase: "completed",
       timerId: t.id,
       workedMs: res.session.activeMs,
       date: t.date,

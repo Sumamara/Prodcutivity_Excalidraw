@@ -5,6 +5,7 @@ import { useCellValues } from "../canvas/cellsStore";
 import { useNow } from "./clock";
 import {
   closeTimeUp,
+  finishTimer,
   openTimeUp,
   useActiveTimer,
   useTimeUp,
@@ -13,6 +14,7 @@ import {
 import {
   cellId,
   elapsedMs,
+  formatRemaining,
   formatWorked,
   isFreeTimer,
   remainingMs,
@@ -60,6 +62,7 @@ function CrossingWatcher({ timer }: { timer: ActiveTimer }) {
       // Tiempo trabajado al llegar a 0 (queda fijo mientras el aviso está abierto).
       openTimeUp({
         kind: "task",
+        phase: "overtime",
         timerId: timer.id,
         workedMs: elapsedMs(timer, now),
         date: timer.date,
@@ -86,28 +89,53 @@ function Dialog({ info }: { info: TimeUpInfo }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  const isOvertimePhase = info.phase === "overtime";
+  const title = isOvertimePhase ? "Tiempo finalizado" : "Tarea completada";
+
   return createPortal(
     <div className="mm-backdrop" onPointerDown={closeTimeUp}>
       <div
         className="mm-panel tu-panel"
+        data-phase={info.phase}
         role="dialog"
-        aria-label="Tiempo finalizado"
+        aria-label={title}
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="mm-head tu-head">
           <span className="tu-check" aria-hidden="true">
-            <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
-              <path
-                d="M3.5 8.5l3 3 6-7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {isOvertimePhase ? (
+              <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M8 4.8v3.4l2.3 1.4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 16 16" width="16" height="16" focusable="false">
+                <path
+                  d="M3.5 8.5l3 3 6-7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
           </span>
-          <strong>Tiempo finalizado</strong>
+          <strong>{title}</strong>
           <button
             type="button"
             className="mm-x"
@@ -123,48 +151,91 @@ function Dialog({ info }: { info: TimeUpInfo }) {
           </button>
         </div>
 
-        <div className="tu-body">
-          <p className="tu-praise">¡Muy bien!</p>
-          <p className="tu-praise-sub">Un bloque de enfoque más a tu favor.</p>
-
-          {info.kind === "task" ? (
-            <TaskLine info={info} />
-          ) : (
-            <p className="tu-task">
-              del cronómetro · trabajaste <b>{formatWorked(info.workedMs)}</b>
+        {isOvertimePhase && info.kind === "task" ? (
+          <div className="tu-body">
+            <p className="tu-over-note">
+              El bloque planeado terminó. El cronómetro sigue en tiempo extra:
             </p>
-          )}
+            <OvertimeClock />
+            <TaskNameLine info={info} />
+            <button
+              type="button"
+              className="tu-complete-btn"
+              onClick={finishTimer}
+            >
+              Tarea completada
+            </button>
+          </div>
+        ) : (
+          <div className="tu-body">
+            <p className="tu-praise">¡Muy bien!</p>
+            <p className="tu-praise-sub">Un bloque de enfoque más a tu favor.</p>
 
-          <div className="tu-opt">
-            <span className="tu-n">1</span>
-            <div className="tu-txt">
-              <b>Replantear</b>
-              <span>¿Cómo se ve más fácil?</span>
+            {info.kind === "task" ? (
+              <TaskLine info={info} />
+            ) : (
+              <p className="tu-task">
+                del cronómetro · trabajaste <b>{formatWorked(info.workedMs)}</b>
+              </p>
+            )}
+
+            <div className="tu-opt">
+              <span className="tu-n">1</span>
+              <div className="tu-txt">
+                <b>Replantear</b>
+                <span>¿Cómo se ve más fácil?</span>
+              </div>
+            </div>
+
+            <div className="tu-opt">
+              <span className="tu-n">2</span>
+              <div className="tu-txt">
+                <b>Descansar</b>
+                <span>
+                  Puedes descansar{" "}
+                  {lo === hi ? (
+                    <>
+                      <b>{lo}</b> {unit(lo)}
+                    </>
+                  ) : (
+                    <>
+                      de <b>{lo}</b> a <b>{hi}</b> minutos
+                    </>
+                  )}
+                </span>
+              </div>
             </div>
           </div>
-
-          <div className="tu-opt">
-            <span className="tu-n">2</span>
-            <div className="tu-txt">
-              <b>Descansar</b>
-              <span>
-                Puedes descansar{" "}
-                {lo === hi ? (
-                  <>
-                    <b>{lo}</b> {unit(lo)}
-                  </>
-                ) : (
-                  <>
-                    de <b>{lo}</b> a <b>{hi}</b> minutos
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Reloj negativo en vivo sincronizado con el temporizador activo. */
+function OvertimeClock() {
+  const timer = useActiveTimer();
+  const now = useNow();
+  const text = timer ? formatRemaining(remainingMs(timer, now)) : "−00:00";
+  return (
+    <div className="tu-over-clock" role="timer" aria-live="off">
+      {text}
+    </div>
+  );
+}
+
+/** Nombre en vivo de la tarea (para la fase amarilla de Tiempo finalizado). */
+function TaskNameLine({ info }: { info: Extract<TimeUpInfo, { kind: "task" }> }) {
+  const values = useCellValues(info.date, info.sectionId);
+  const name =
+    (values?.[cellId(info.cols.label, info.row)] ?? "").trim() ||
+    info.label ||
+    `Fila ${info.row + 1}`;
+  return (
+    <p className="tu-task tu-task-center">
+      Tarea: <b>{name}</b>
+    </p>
   );
 }
 
