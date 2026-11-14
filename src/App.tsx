@@ -17,6 +17,7 @@ import { Toolbar } from "./tools/Toolbar";
 import { hydrateHabits } from "./habits/habitsStore";
 import { ReminderHost } from "./habits/ReminderHost";
 import { RowPlayLayer } from "./timer/RowPlayLayer";
+import { MiniTimerView } from "./timer/MiniTimerView";
 import { TimerChip } from "./timer/TimerChip";
 import { TimeUpDialog } from "./timer/TimeUpDialog";
 import {
@@ -31,6 +32,8 @@ import {
   SECTIONS,
   resolveSection,
 } from "./sections/registry";
+
+const COMPACT_VIEWPORT_QUERY = "(max-width: 450px), (max-height: 300px)";
 
 export function App() {
   // Fecha global para las 3 pestañas. Al abrir, siempre hoy (no se restaura).
@@ -56,6 +59,35 @@ export function App() {
   const [healTick, setHealTick] = useState(0);
   // Fila cuya celda Esp se tocó: solo esa muestra el ▶ del temporizador.
   const [timerRow, setTimerRow] = useState<number | null>(null);
+
+  // Modo Mini: manual (botón en cabecera) o automático en ventanas estrechas/bajas.
+  const [manualMini, setManualMini] = useState(false);
+  const [autoMini, setAutoMini] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia(COMPACT_VIEWPORT_QUERY).matches,
+  );
+  const [dismissedAutoMini, setDismissedAutoMini] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_VIEWPORT_QUERY);
+    const update = () => {
+      setAutoMini(mq.matches);
+      if (!mq.matches) setDismissedAutoMini(false);
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const miniMode = manualMini || (autoMini && !dismissedAutoMini);
+  const enterMiniMode = useCallback(() => {
+    setManualMini(true);
+    setDismissedAutoMini(false);
+  }, []);
+  const exitMiniMode = useCallback(() => {
+    setManualMini(false);
+    if (autoMini) setDismissedAutoMini(true);
+  }, [autoMini]);
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const hotspotsAnchorRef = useRef<HTMLDivElement>(null);
@@ -218,6 +250,7 @@ export function App() {
             viewedDate={date}
             viewedSectionId={sectionId}
             onGoTo={goToTimerSheet}
+            onMiniMode={enterMiniMode}
           />
           {active.supportsTemplate && (
             <>
@@ -364,6 +397,8 @@ export function App() {
           />
         </div>
       </div>
+
+      {miniMode && <MiniTimerView onExit={exitMiniMode} />}
     </div>
   );
 }

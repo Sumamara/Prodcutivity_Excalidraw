@@ -27,6 +27,8 @@ interface Props {
   viewedSectionId: string;
   /** Lleva a la hoja (fecha + sección) donde se inició el temporizador. */
   onGoTo: (timer: ActiveTimer) => void;
+  /** Activa el Modo Mini centrado en el contador. */
+  onMiniMode?: () => void;
 }
 
 /**
@@ -38,12 +40,12 @@ interface Props {
  */
 export function TimerChip(props: Props) {
   const timer = useActiveTimer();
-  if (!timer) return <IdleChip />;
+  if (!timer) return <IdleChip onMiniMode={props.onMiniMode} />;
   return <ChipBody timer={timer} {...props} />;
 }
 
 /** Sin temporizador: contador en 0 y ▶ para iniciar el cronómetro. */
-function IdleChip() {
+function IdleChip({ onMiniMode }: { onMiniMode?: () => void }) {
   return (
     <div className="tm-chip" data-state="idle">
       <span className="tm-main tm-static">
@@ -59,6 +61,17 @@ function IdleChip() {
       >
         <PlayIcon />
       </button>
+      {onMiniMode && (
+        <button
+          type="button"
+          className="tm-btn"
+          aria-label="Modo mini"
+          title="Modo mini"
+          onClick={onMiniMode}
+        >
+          <MiniIcon />
+        </button>
+      )}
     </div>
   );
 }
@@ -68,6 +81,7 @@ function ChipBody({
   viewedDate,
   viewedSectionId,
   onGoTo,
+  onMiniMode,
 }: Props & { timer: ActiveTimer }) {
   const now = useNow();
   const free = isFreeTimer(timer);
@@ -139,6 +153,17 @@ function ChipBody({
       >
         <StopIcon />
       </button>
+      {onMiniMode && (
+        <button
+          type="button"
+          className="tm-btn"
+          aria-label="Modo mini"
+          title="Modo mini"
+          onClick={onMiniMode}
+        >
+          <MiniIcon />
+        </button>
+      )}
 
       {/* Solo lectores de pantalla: se anuncia una vez al pasar del tiempo. */}
       <span className="tm-sr" aria-live="polite">
@@ -169,6 +194,24 @@ function StopIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
       <rect x="2" y="2" width="8" height="8" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function MiniIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <rect
+        x="1.5"
+        y="2.5"
+        width="9"
+        height="7"
+        rx="1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+      />
+      <rect x="5.5" y="5" width="3.5" height="3" rx="0.5" fill="currentColor" />
     </svg>
   );
 }
