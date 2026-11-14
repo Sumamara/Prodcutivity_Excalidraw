@@ -101,7 +101,9 @@ export function Toolbar({
   useEffect(() => {
     if (!api) return;
     const c = cfgRef.current;
-    applyPenMode(c.penMode);
+    // En "Mover" (hand) o modo celdas nunca bloqueamos el tacto con penMode,
+    // para que el paneo con 1 dedo y el zoom nativo con 2 dedos vayan fluidos.
+    applyPenMode(c.penMode && c.activeId !== "hand" && !(cellMode && hasCells));
 
     if (cellMode && hasCells) {
       if (activeToolType !== "selection") api.setActiveTool({ type: "selection" });
@@ -135,10 +137,12 @@ export function Toolbar({
   useEffect(() => {
     if (!api) return;
     return api.onChange((_els, appState) => {
-      if (!cfgRef.current.penMode && appState.penMode) {
-        api.updateScene({ appState: { penMode: false } });
-      }
-    });
+        const wantPenMode =
+          cfgRef.current.penMode && cfgRef.current.activeId !== "hand";
+        if (!wantPenMode && appState.penMode) {
+          api.updateScene({ appState: { penMode: false } });
+        }
+      });
   }, [api]);
 
   const selectPencil = (p: Pencil) => {
