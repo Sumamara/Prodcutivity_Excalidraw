@@ -16,6 +16,7 @@ import {
   FIT_PAD_Y,
   FIT_SCALE,
 } from "./fitConfig";
+import { LiveInkSession, isPenLikeStroke } from "./liveInk";
 import type {
   ExcalidrawAPI,
   ExcalidrawInitialData,
@@ -93,6 +94,8 @@ export function Canvas({
   templateMode,
 }: CanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const liveCanvasRef = useRef<HTMLCanvasElement>(null);
+  const liveInkRef = useRef<LiveInkSession | null>(null);
   const apiRef = useRef<ExcalidrawAPI | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastViewport = useRef<Viewport>({ scrollX: 0, scrollY: 0, zoom: 1 });
@@ -251,13 +254,19 @@ export function Canvas({
     const w = box?.width || window.innerWidth;
     const h = box?.height || window.innerHeight;
 
-    const usableW = Math.max(1, w - FIT_PAD_LEFT - FIT_PAD_RIGHT);
-    const usableH = Math.max(1, h - FIT_PAD_Y * 2);
+    const mobile = w <= 640;
+    const padLeft = mobile ? 8 : FIT_PAD_LEFT;
+    const padRight = mobile ? 8 : FIT_PAD_RIGHT;
+    const padTop = mobile ? 8 : FIT_PAD_Y;
+    const padBottom = mobile ? 58 : FIT_PAD_Y;
+
+    const usableW = Math.max(1, w - padLeft - padRight);
+    const usableH = Math.max(1, h - padTop - padBottom);
 
     const fit = Math.min(usableW / sheetW, usableH / sheetH) * FIT_SCALE;
     const zoom = Math.max(0.1, Math.min(fit, 30));
-    const scrollX = Math.round((FIT_PAD_LEFT + usableW / 2) / zoom - sheetW / 2);
-    const scrollY = Math.round((FIT_PAD_Y + usableH / 2) / zoom - sheetH / 2);
+    const scrollX = Math.round((padLeft + usableW / 2) / zoom - sheetW / 2);
+    const scrollY = Math.round((padTop + usableH / 2) / zoom - sheetH / 2);
 
     api.updateScene({
       appState: {
@@ -303,7 +312,9 @@ export function Canvas({
   //    manejamos pinch-to-zoom + desplazamiento de 2 dedos directamente.
   useEffect(() => {
     const el = wrapperRef.current;
+    const liveCanvas = liveCanvasRef.current;
     if (!el) return;
+    liveInkRef.current = liveCanvas ? new LiveInkSession(liveCanvas) : null;
 
     const PALM_CONTACT_PX = 70;
 
@@ -406,6 +417,12 @@ export function Canvas({
       if (e.pointerType === "pen") {
         penActive = true;
         cancelPendingTouches();
+        const api = apiRef.current;
+        if (api && isPenLikeStroke(e, api.getAppState(), cellModeRef.current)) {
+          liveInkRef.current?.start(e, api, el);
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
         return;
       }
       if (e.pointerType !== "touch") return;
@@ -446,7 +463,14 @@ export function Canvas({
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (e.pointerType === "pen") return;
+      if (e.pointerType === "pen") {
+        if (liveInkRef.current?.activePointerId === e.pointerId) {
+          liveInkRef.current.move(e);
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+        return;
+      }
       if (e.pointerType !== "touch") return;
 
       const pt = touches.get(e.pointerId);
@@ -494,6 +518,16 @@ export function Canvas({
     const onPointerEnd = (e: PointerEvent) => {
       if (e.pointerType === "pen") {
         penActive = false;
+        if (liveInkRef.current?.activePointerId === e.pointerId) {
+          const api = apiRef.current;
+          if (e.type === "pointercancel" || !api) {
+            liveInkRef.current.cancel();
+          } else {
+            liveInkRef.current.finish(e, api);
+          }
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
         return;
       }
       if (e.pointerType !== "touch") return;
@@ -513,21 +547,22 @@ export function Canvas({
       }
     };
 
-      el.addEventListener("pointerdown", onPointerDown, true);
-      el.addEventListener("pointermove", onPointerMove, true);
-      el.addEventListener("pointerup", onPointerEnd, true);
-      el.addEventListener("pointercancel", onPointerEnd, true);
-      return () => {
-        if (pinchRaf != null) cancelAnimationFrame(pinchRaf);
-        el.removeEventListener("pointerdown", onPointerDown, true);
-        el.removeEventListener("pointermove", onPointerMove, true);
-        el.removeEventListener("pointerup", onPointerEnd, true);
-        el.removeEventListener("pointercancel", onPointerEnd, true);
-      };
-    }, []);
+    el.addEventListener("pointerdown", onPointerDown, true);
+    el.addEventListener("pointermove", onPointerMove, true);
+    el.addEventListener("pointerup", onPointerEnd, true);
+    el.addEventListener("pointercancel", onPointerEnd, true);
+    return () => {
+      if (pinchRaf != null) cancelAnimationFrame(pinchRaf);
+      el.removeEventListener("pointerdown", onPointerDown, true);
+      el.removeEventListener("pointermove", onPointerMove, true);
+      el.removeEventListener("pointerup", onPointerEnd, true);
+      el.removeEventListener("pointercancel", onPointerEnd, true);
+    };
+  }, []);
 
   return (
     <div className="excalidraw-wrapper" ref={wrapperRef}>
+      <canvas ref={liveCanvasRef} className="live-ink-layer" aria-hidden="true" />
       <Excalidraw
         excalidrawAPI={onApi}
         initialData={initialData}

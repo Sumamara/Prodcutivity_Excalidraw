@@ -26,7 +26,7 @@ import {
   rowOfCellId,
   type ActiveTimer,
 } from "./timer/timerCore";
-import { getTimerSnapshot, hydrateTimer } from "./timer/timerStore";
+import { getTimerSnapshot, hydrateTimer, useActiveTimer } from "./timer/timerStore";
 import {
   DEFAULT_SECTION_ID,
   SECTIONS,
@@ -68,10 +68,18 @@ export function App() {
   );
   const [dismissedAutoMini, setDismissedAutoMini] = useState(false);
 
+  const activeTimer = useActiveTimer();
+  const [shortViewport, setShortViewport] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-height: 300px)").matches,
+  );
+
   useEffect(() => {
     const mq = window.matchMedia(COMPACT_VIEWPORT_QUERY);
+    const mqShort = window.matchMedia("(max-height: 300px)");
     const update = () => {
       setAutoMini(mq.matches);
+      setShortViewport(mqShort.matches);
       if (!mq.matches) setDismissedAutoMini(false);
     };
     update();
@@ -79,7 +87,10 @@ export function App() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const miniMode = manualMini || (autoMini && !dismissedAutoMini);
+  // En móvil (<= 450px) solo abre Modo Mini automáticamente si hay un timer
+  // activo; en ventanas muy bajas (<= 300px, p. ej. flotante Android) siempre.
+  const canAutoMini = shortViewport || (autoMini && activeTimer != null);
+  const miniMode = manualMini || (canAutoMini && !dismissedAutoMini);
   const enterMiniMode = useCallback(() => {
     setManualMini(true);
     setDismissedAutoMini(false);

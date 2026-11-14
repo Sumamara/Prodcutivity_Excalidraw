@@ -176,3 +176,47 @@
   cursor: pointer;
   padding: 0;
 }
+
+/* En celular / ventanas estrechas la barra pasa abajo en horizontal para no
+   tapar la hoja ni salirse de pantalla. */
+@media (max-width: 640px) {
+  .toolbar {
+    left: 50%;
+    top: auto;
+    bottom: 8px;
+    transform: translateX(-50%);
+    flex-direction: row;
+    max-width: calc(100% - 16px);
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tb-btn {
+    flex: none;
+    width: 32px;
+    height: 32px;
+  }
+
+  .tb-sep {
+    flex: none;
+    width: 1px;
+    height: 20px;
+    margin: 0 2px;
+  }
+
+  .tb-panel {
+    position: fixed;
+    left: 50%;
+    top: auto;
+    bottom: 62px;
+    transform: translateX(-50%);
+    width: min(260px, calc(100vw - 24px));
+    z-index: 20;
+  }
+}
