@@ -315,6 +315,10 @@ export function Canvas({
     const liveCanvas = liveCanvasRef.current;
     if (!el) return;
     liveInkRef.current = liveCanvas ? new LiveInkSession(liveCanvas) : null;
+    // Escuchamos en `.page-frame` (padre del lienzo y de `.hotspot-layer`) para
+    // que el zoom con 2 dedos y el rechazo de palma funcionen aunque un dedo
+    // caiga encima de una barra de hotspot (como "Descarga mental").
+    const listenTarget = (el.closest(".page-frame") as HTMLElement | null) ?? el;
 
     const PALM_CONTACT_PX = 70;
 
@@ -413,7 +417,12 @@ export function Canvas({
     const isDrawingTool = () =>
       lastTool.current === "freedraw" || lastTool.current === "eraser";
 
+    const isUiControl = (target: EventTarget | null) =>
+      target instanceof Element &&
+      !!target.closest(".toolbar, .mm-backdrop, .hs-pop, .cell-editor");
+
     const onPointerDown = (e: PointerEvent) => {
+      if (isUiControl(e.target)) return;
       if (e.pointerType === "pen") {
         penActive = true;
         cancelPendingTouches();
@@ -463,6 +472,7 @@ export function Canvas({
     };
 
     const onPointerMove = (e: PointerEvent) => {
+      if (isUiControl(e.target) && !touches.has(e.pointerId)) return;
       if (e.pointerType === "pen") {
         if (liveInkRef.current?.activePointerId === e.pointerId) {
           liveInkRef.current.move(e);
@@ -516,6 +526,13 @@ export function Canvas({
     };
 
     const onPointerEnd = (e: PointerEvent) => {
+      if (
+        isUiControl(e.target) &&
+        !touches.has(e.pointerId) &&
+        liveInkRef.current?.activePointerId !== e.pointerId
+      ) {
+        return;
+      }
       if (e.pointerType === "pen") {
         penActive = false;
         if (liveInkRef.current?.activePointerId === e.pointerId) {
@@ -547,16 +564,16 @@ export function Canvas({
       }
     };
 
-    el.addEventListener("pointerdown", onPointerDown, true);
-    el.addEventListener("pointermove", onPointerMove, true);
-    el.addEventListener("pointerup", onPointerEnd, true);
-    el.addEventListener("pointercancel", onPointerEnd, true);
+    listenTarget.addEventListener("pointerdown", onPointerDown, true);
+    listenTarget.addEventListener("pointermove", onPointerMove, true);
+    listenTarget.addEventListener("pointerup", onPointerEnd, true);
+    listenTarget.addEventListener("pointercancel", onPointerEnd, true);
     return () => {
       if (pinchRaf != null) cancelAnimationFrame(pinchRaf);
-      el.removeEventListener("pointerdown", onPointerDown, true);
-      el.removeEventListener("pointermove", onPointerMove, true);
-      el.removeEventListener("pointerup", onPointerEnd, true);
-      el.removeEventListener("pointercancel", onPointerEnd, true);
+      listenTarget.removeEventListener("pointerdown", onPointerDown, true);
+      listenTarget.removeEventListener("pointermove", onPointerMove, true);
+      listenTarget.removeEventListener("pointerup", onPointerEnd, true);
+      listenTarget.removeEventListener("pointercancel", onPointerEnd, true);
     };
   }, []);
 

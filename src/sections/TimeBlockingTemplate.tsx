@@ -4,6 +4,7 @@
  * 4:00 AM → medianoche. Abajo: Notas + ritual de INICIO.
  */
 import type { Hotspot } from "../canvas/hotspot";
+import type { Cell } from "../canvas/SheetTemplate";
 
 export const SHEET_SIZE = { w: 800, h: 1035 };
 
@@ -302,3 +303,68 @@ export const TIME_BLOCKING_HOTSPOTS: Hotspot[] = [
     body: "Haz la lista entera cada vez, antes de empezar a trabajar.",
   },
 ];
+
+/** Celdas editables de Time blocking (3 prioridades, Descarga mental, Hora y Notas). */
+export const TIME_BLOCKING_CELLS: Cell[] = (() => {
+  const out: Cell[] = [];
+
+  // 3 prioridades
+  PRIORITY_Y.forEach((y, i) => {
+    out.push({
+      id: `prio-${i}`,
+      x: 60,
+      y: y - 19,
+      w: L.r - 6 - 60,
+      h: 22,
+      kind: "text",
+    });
+  });
+
+  // Descarga mental (19 filas: texto principal + columna derecha corta)
+  for (let i = 0; i < DESCARGA_ROWS; i++) {
+    const y = DESCARGA_T + i * DR_H;
+    out.push({
+      id: `desc-${i}`,
+      x: 56,
+      y,
+      w: 340 - 56,
+      h: DR_H,
+      kind: "text",
+    });
+    out.push({
+      id: `desc-n-${i}`,
+      x: 340,
+      y,
+      w: L.r - 340,
+      h: DR_H,
+      kind: "num",
+    });
+  }
+
+  // Bloque horario (21 filas: 4:00 AM -> 12:00 AM)
+  for (let i = 0; i < HORA_ROWS; i++) {
+    const y = HORA_T + i * HR_H;
+    out.push({
+      id: `hora-${i}`,
+      x: HORA_LABEL_R,
+      y,
+      w: R.r - HORA_LABEL_R,
+      h: HR_H,
+      kind: "text",
+    });
+  }
+
+  // Notas (zona derecha debajo de la cabecera Notas)
+  for (let i = 0; i < 9; i++) {
+    out.push({
+      id: `nota-${i}`,
+      x: 280,
+      y: 764 + i * 24,
+      w: R.r - 8 - 280,
+      h: 24,
+      kind: "text",
+    });
+  }
+
+  return out;
+})();

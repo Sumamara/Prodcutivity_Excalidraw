@@ -11,6 +11,7 @@ import type { Hotspot } from "../canvas/hotspot";
 import type { TimerColumns } from "../timer/timerCore";
 import {
   TimeBlockingTemplate,
+  TIME_BLOCKING_CELLS,
   TIME_BLOCKING_HOTSPOTS,
   SHEET_SIZE as TIME_BLOCKING_SIZE,
 } from "./TimeBlockingTemplate";
@@ -94,6 +95,7 @@ export const SECTIONS: Section[] = [
     height: TIME_BLOCKING_SIZE.h,
     dateScoped: true,
     hotspots: TIME_BLOCKING_HOTSPOTS,
+    cells: TIME_BLOCKING_CELLS,
     supportsTemplate: true,
   },
   {

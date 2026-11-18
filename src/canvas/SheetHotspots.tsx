@@ -1,4 +1,4 @@
-import { useEffect, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 
 import { AvoidanceModal } from "./Avoidance";
@@ -36,6 +36,7 @@ export function SheetHotspots({
   const [meterOpen, setMeterOpen] = useState(false);
   const [reappraisalOpen, setReappraisalOpen] = useState(false);
   const [avoidanceOpen, setAvoidanceOpen] = useState(false);
+  const tapRef = useRef<{ x: number; y: number; ok: boolean } | null>(null);
 
   useEffect(() => {
     closeRef.current = () => setOpen(null);
@@ -79,8 +80,29 @@ export function SheetHotspots({
           title={h.title}
           aria-label={h.title}
           aria-expanded={open?.id === h.id}
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            // Solo un toque limpio de 1 dedo/ratón abre la ayuda; si hay otro
+            // toque activo o empieza a arrastrar/zoomear, no abre el popover.
+            tapRef.current = {
+              x: e.clientX,
+              y: e.clientY,
+              ok: e.isPrimary && e.pointerType !== "pen",
+            };
+          }}
+          onPointerMove={(e) => {
+            const t = tapRef.current;
+            if (!t || !t.ok) return;
+            if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 6) t.ok = false;
+          }}
+          onPointerCancel={() => {
+            if (tapRef.current) tapRef.current.ok = false;
+          }}
           onClick={(e) => {
+            if (tapRef.current && !tapRef.current.ok) {
+              tapRef.current = null;
+              return;
+            }
+            tapRef.current = null;
             // Leer el rect AQUÍ: dentro del updater de setState, React ya ha
             // puesto e.currentTarget a null (pantalla en blanco).
             const rect = e.currentTarget.getBoundingClientRect();
